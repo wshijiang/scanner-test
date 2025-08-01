@@ -1,12 +1,6 @@
 # Prerequisites
 *.d
 
-#Visual Studio
-*.sln
-/.vs/
-/bin/
-/obj/
-
 # Object files
 *.o
 *.ko
