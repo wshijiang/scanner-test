@@ -1,11 +1,13 @@
 # Prerequisites
 *.d
 
-#Visual Studio
-*.sln
-/.vs/
-/bin/
-/obj/
+# User-specific files
+*.rsuser
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.env
 
 # Object files
 *.o
