@@ -1,6 +1,9 @@
 # Prerequisites
 *.d
 
+scan-test.sln
+scan-test.vcxproj
+
 # User-specific files
 *.rsuser
 *.suo
