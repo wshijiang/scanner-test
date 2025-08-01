@@ -39,7 +39,6 @@ int main() {
     }
     Masscan_data* data = malloc(sizeof(Masscan_data));
     
-
     masscan_scan(conn, data, manager);
 
 
