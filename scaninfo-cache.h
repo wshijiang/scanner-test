@@ -20,6 +20,6 @@ int add_scan_result_to_cache(CacheManager*, const char*, const char*, \
 int write_to_database(PGconn*, const CacheManager*, const DbConnectInfo*);
 int clear_cache_data(CacheManager*);
 int clear_cache_manager(CacheManager*);
-unsigned get_cache_status(CacheManager*);
+//unsigned get_cache_status(CacheManager*);
 
 #endif // !SCANINFO_CACHE_H

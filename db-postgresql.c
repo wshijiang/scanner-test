@@ -22,14 +22,14 @@ static int free_init_sql_memory(InitDatabaseSQL* idbsql, unsigned short count)
 /**
 * 如果执行遇到错误则会清理掉传入的res。并且会执行事务回滚操作，这也意味着所有与数据库相关的操作必须存在于事务中。
 */
-static int to_table(PGconn* conn, PGresult* res, const char* insert_sql, const char* param, int nparmams)
+static int to_table(const PGconn* conn, PGresult* res, const char* insert_sql, const char* param, int nparmams)
 {
 	res = PQexecParams(
 		conn,
 		insert_sql,
 		nparmams,
 		NULL,
-		param,
+		&param,
 		0,
 		0,
 		0
@@ -45,6 +45,18 @@ static int to_table(PGconn* conn, PGresult* res, const char* insert_sql, const c
 
 }
 
+int postgresql_transaction(PGconn* conn, const char* type)
+{
+	PGresult* res = PQexec(conn, type);
+	if (PQresultStatus(res) != PGRES_COMMAND_OK)
+	{
+		fprintf(stderr, "事务 %s 执行失败\n错误信息：%s\n", type, PQerrorMessage(conn));
+		PQclear(res);
+		return 0;
+	}
+	PQclear(res);
+	return 1;
+}
 
 int postgresql_init(const PGconn* conn)
 {
@@ -158,7 +170,7 @@ int postgresql_init(const PGconn* conn)
 	return 1;
 }
 
-PGconn* create_conn(DbConnectInfo* info)
+PGconn* create_conn(const DbConnectInfo* info)
 {
 	PGconn* conn = NULL;
 
@@ -180,8 +192,10 @@ PGconn* create_conn(DbConnectInfo* info)
 
 PGconn* connect_to_postgresql(const DbConnectInfo* info, const unsigned retry_times, unsigned sleep_time)
 {
-	char* conn_info = ("host=%s port=%u dbname=%s user=%s password=%s", info->ip, info->port, info->db_name, info->username, info->password);
+	//char* conn_info = ("host=%s port=%u dbname=%s user=%s password=%s", info->ip, info->port, info->db_name, info->username, info->password);
 
+	const char* conn_info = malloc(strlen(info->ip) + 20 + strlen(info->db_name) + strlen(info->username) + strlen(info->password));
+	sprintf(conn_info, "host=%s port=%u dbname=%s user=%s password=%s", info->ip, info->port, info->db_name, info->username, info->password);
 	/*自动重连*/
 	for (unsigned i = 0; i < retry_times; i++)
 	{
@@ -198,11 +212,13 @@ PGconn* connect_to_postgresql(const DbConnectInfo* info, const unsigned retry_ti
 		}
 		else
 		{
+			free(conn_info);
 			return conn;
 		}
 		
 	}
 	fprintf(stderr, "超过最大重试次数，放弃连接\n");
+	free(conn_info);
 	return NULL;
 }
 
@@ -249,7 +265,9 @@ int insert_batch_data(const PGconn* conn, const CacheManager* manager)
 			for (unsigned i = 0; i < entry->info_count; i++)
 			{
 				Info* info = &entry->infos[i];
-				const char* sql_param_values1[] = { ip_id, info->port };
+				char ports[10];
+				sprintf(ports, "%d", info->port);
+				const char* sql_param_values1[] = { ip_id, ports };
 
 				//NOTE:日后需要添加详细注释
 				if (!to_table(conn, res, insert_port_table_sql, sql_param_values1, 2)) return 0;
@@ -270,18 +288,7 @@ int insert_batch_data(const PGconn* conn, const CacheManager* manager)
 	return 1;
 }
 
-int postgresql_transaction(PGconn* conn, const char* type)
-{
-	PGresult* res = PQexec(conn, type);
-	if (PQresultStatus(res) != PGRES_COMMAND_OK)
-	{
-		fprintf(stderr, "事务 %s 执行失败\n错误信息：\n", *type, PQerrorMessage(conn));
-		PQclear(res);
-		return 0;
-	}
-	PQclear(res);
-	return 1;
-}
+
 
 
 
