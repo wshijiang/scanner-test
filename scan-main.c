@@ -24,7 +24,8 @@ typedef struct {
 
 
 int main() {
-    printf("开始");
+	setbuf(stdout, NULL); // 禁用缓冲，确保输出立即显示
+    printf("开始\n");
 
     CacheManager* manager = create_cache_manager();
     DbConnectInfo db_info;
@@ -37,13 +38,23 @@ int main() {
     PGconn* conn = create_conn(&db_info);
     if (!conn)
     {
+        clear_cache_manager(manager);
         exit(1);
     }
     Masscan_data* data = malloc(sizeof(Masscan_data));
+    if (!data)
+    {
+        clear_cache_manager(manager);
+        PQfinish(conn);
+        exit(1);
+    }
     
     masscan_scan(conn, data, manager);
 
 	printf("扫描完成\n");
+    free(data);
+    PQfinish(conn);
+    clear_cache_manager(manager);
     return 0;
 }
 

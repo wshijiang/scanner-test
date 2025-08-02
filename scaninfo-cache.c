@@ -32,7 +32,7 @@ IPEntry* create_ip_entry(const char* ip, unsigned initial_capacity, const char* 
     entry->ip = strdup(ip);
     if (!entry->ip)
     {
-        free(entry->ip);
+        free(entry);
         return NULL;
     }
 
