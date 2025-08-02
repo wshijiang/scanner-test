@@ -1,4 +1,4 @@
-#pragma once
+ï»¿#pragma once
 
 //#ifndef DB-POSTGRESQL_H
 
@@ -22,7 +22,7 @@ typedef struct {
 
 
 typedef struct {
-	char* init_sql; //ÓÃÓÚ´æ´¢¶à¸ösqlÓï¾ä£¬ÇÒÖ÷ÒªÓÃÓÚ³õÊ¼»¯Êı¾İ¿â
+	char* init_sql; //ç”¨äºå­˜å‚¨å¤šä¸ªsqlè¯­å¥ï¼Œä¸”ä¸»è¦ç”¨äºåˆå§‹åŒ–æ•°æ®åº“
 }InitDBSQL;
 
 typedef struct {

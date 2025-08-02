@@ -1,4 +1,4 @@
-#pragma once
+ï»¿#pragma once
 
 //#ifndef SCANINFO-CACHE_H
 
@@ -8,7 +8,7 @@
 #include "db-postgresql.h"
 
 
-// ¶Ë¿ÚĞÅÏ¢½á¹¹Ìå
+// ç«¯å£ä¿¡æ¯ç»“æ„ä½“
 typedef struct {
     unsigned short port;
     char* status;
@@ -17,28 +17,27 @@ typedef struct {
     char* protocol;
 } Info;
 
-// IPÌõÄ¿½á¹¹Ìå£¨¹şÏ£±í½Úµã£©
+// IPæ¡ç›®ç»“æ„ä½“ï¼ˆå“ˆå¸Œè¡¨èŠ‚ç‚¹ï¼‰
 typedef struct {
-    char* ip;                    // ¼ü
-    Info* infos;                 // ¶Ë¿ÚĞÅÏ¢Êı×é
-    char* scanner_name;          // É¨ÃèÆ÷Ãû³Æ
-    unsigned info_count;              // µ±Ç°¶Ë¿ÚÊıÁ¿
-    unsigned info_capacity;           // ¶Ë¿ÚÊı×éÈİÁ¿
-    UT_hash_handle hh;           // uthash¾ä±ú
+    char* ip;                    // é”®
+    Info* infos;                 // ç«¯å£ä¿¡æ¯æ•°ç»„
+    char* scanner_name;          // æ‰«æå™¨åç§°
+    unsigned info_count;              // å½“å‰ç«¯å£æ•°é‡
+    unsigned info_capacity;           // ç«¯å£æ•°ç»„å®¹é‡
+    UT_hash_handle hh;           // uthashå¥æŸ„
 } IPEntry;
 
-// È«¾Ö»º´æ¹ÜÀí½á¹¹
+// å…¨å±€ç¼“å­˜ç®¡ç†ç»“æ„
 typedef struct {
-    IPEntry* ip_table;           // ¹şÏ£±íÍ·Ö¸Õë
-    unsigned total_records;           // ×Ü¼ÇÂ¼Êı£¨ÓÃÓÚ1000ÌõÅú´¦ÀíÅĞ¶Ï£©
+    IPEntry* ip_table;           // å“ˆå¸Œè¡¨å¤´æŒ‡é’ˆ
+    unsigned total_records;           // æ€»è®°å½•æ•°ï¼ˆç”¨äº1000æ¡æ‰¹å¤„ç†åˆ¤æ–­ï¼‰
 } CacheManager;
 
-// //»º´æ×´Ì¬
+// //ç¼“å­˜çŠ¶æ€
 // typedef struct {
 //     unsigned total;
 //     unsigned count;
 // }CacheStatus;
-
 
 
 CacheManager* create_cache_manager();
