@@ -23,6 +23,7 @@ typedef struct {
 
 
 int main() {
+    printf("¿ªÊ¼");
 
     CacheManager* manager = create_cache_manager();
     DbConnectInfo db_info;
