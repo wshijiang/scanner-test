@@ -4,26 +4,21 @@
 
 #include "postgresql/libpq-fe.h"
 #include "scaninfo-cache.h"
+#include "common-types.h"
 
+struct CacheManager; // 前向声明CacheManager结构体
 
 #define MAX_RETRY_TIMES 4
 #define RETRY_SLEEP_TIME 1 
 
-typedef struct {
-	char* ip;
-	unsigned short port;
-	char* username;
-	char* password;
-	char* db_name;
-	unsigned db_type;
-}DbConnectInfo;
 
 
-typedef struct {
+
+typedef struct InitDBSQL {
 	char* init_sql; //用于存储多个sql语句，且主要用于初始化数据库
 }InitDBSQL;
 
-typedef struct {
+typedef struct InitDatabaseSQL {
 	InitDBSQL* i_sql;
 }InitDatabaseSQL;
 
