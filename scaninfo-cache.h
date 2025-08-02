@@ -1,7 +1,5 @@
 ﻿//#pragma once
 
-
-
 #ifndef SCANINFO_CACHE_H
 
 
@@ -9,9 +7,6 @@
 #include <stdio.h>
 #include "postgresql/libpq-fe.h"
 #include "common-types.h"
-
-
-
 
 
 
