@@ -1,5 +1,5 @@
-
-//FIXME:¸ü¸Ä×¢ÊÍ£¬³õ²½Îª Doxygen
+ï»¿
+//FIXME:æ›´æ”¹æ³¨é‡Šï¼Œåˆæ­¥ä¸º Doxygen
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -7,7 +7,7 @@
 #include "db-postgresql.h"
 
 
-//³õÊ¼»¯»º´æ¹ÜÀíÆ÷
+//åˆå§‹åŒ–ç¼“å­˜ç®¡ç†å™¨
 CacheManager* create_cache_manager()
 {
     CacheManager* manager = malloc(sizeof(CacheManager));
@@ -20,8 +20,8 @@ CacheManager* create_cache_manager()
 
 
 /*
-* ´´½¨ËùĞèipÌõÄ¿
-* @initial_capacity Ä¬ÈÏĞÅÏ¢ÊıÁ¿
+* åˆ›å»ºæ‰€éœ€ipæ¡ç›®
+* @initial_capacity é»˜è®¤ä¿¡æ¯æ•°é‡
 */
 IPEntry* create_ip_entry(const char* ip, unsigned initial_capacity, const char* scanner_name)
 {
@@ -44,19 +44,19 @@ IPEntry* create_ip_entry(const char* ip, unsigned initial_capacity, const char* 
     }
 
     entry->info_capacity = initial_capacity;
-    entry->info_count = 0; //ÒÑ´æ´¢µÄĞÅÏ¢ÌõÊı£¬´´½¨ÌõÄ¿Ê±Ä¬ÈÏÎª0
+    entry->info_count = 0; //å·²å­˜å‚¨çš„ä¿¡æ¯æ¡æ•°ï¼Œåˆ›å»ºæ¡ç›®æ—¶é»˜è®¤ä¸º0
     return entry;
 }
 
 
 /*
-* À©Õ¹infos
+* æ‰©å±•infos
 */
 int expend_info_arry(IPEntry* entry)
 {
     unsigned new_capacity = entry->info_capacity * 2;
 
-    Info* new_infos = realloc(entry->infos, new_capacity * sizeof(Info)); //ÖØĞÂ·ÖÅäÄÚ´æ
+    Info* new_infos = realloc(entry->infos, new_capacity * sizeof(Info)); //é‡æ–°åˆ†é…å†…å­˜
     if (!new_infos) return 0;
 
     entry->infos = new_infos;
@@ -67,12 +67,12 @@ int expend_info_arry(IPEntry* entry)
 
 
 /*
-* ½«Êı¾İÌí¼Óµ½ÌõÄ¿ÖĞ
+* å°†æ•°æ®æ·»åŠ åˆ°æ¡ç›®ä¸­
 */
 int add_data_to_entry(IPEntry* entry, \
     unsigned short port, const char* status, const char* service, const char* protocol, const char* banner)
 {
-    //¼ì²éinfosÈİÁ¿ÊÇ·ñĞèÒªÀ©Èİ
+    //æ£€æŸ¥infoså®¹é‡æ˜¯å¦éœ€è¦æ‰©å®¹
     if (entry->info_count >= entry->info_capacity)
     {
         if (!expend_info_arry(entry))
@@ -103,7 +103,7 @@ int add_data_to_entry(IPEntry* entry, \
 
 
 /*
-* ½«Êı¾İÌí¼Óµ½»º´æÖĞ
+* å°†æ•°æ®æ·»åŠ åˆ°ç¼“å­˜ä¸­
 */
 int add_scan_result_to_cache(CacheManager* manager, const char* ip, const char* scanner_name, \
     unsigned short port, const char* status, const char* service, const char* protocol, const char* banner)
@@ -117,24 +117,23 @@ int add_scan_result_to_cache(CacheManager* manager, const char* ip, const char* 
         if (!entry) return 0;
 
         /*
-        * Ïò¹şÏ£±íÌí¼Ó
-        * HASH_ADD_KEYPTR½ÓÊÜ hh, ±íÍ·, ¼ü, ¼üµÄ³¤¶È, ÒªÌí¼ÓµÄÏî
+        * å‘å“ˆå¸Œè¡¨æ·»åŠ 
+        * HASH_ADD_KEYPTRæ¥å— hh, è¡¨å¤´, é”®, é”®çš„é•¿åº¦, è¦æ·»åŠ çš„é¡¹
         */
         HASH_ADD_KEYPTR(hh, manager->ip_table, entry->ip, strlen(entry->ip), entry);
     }
 
     if (!add_data_to_entry(entry, port, status, service, protocol, banner)) return 0;
 
-    manager->total_records++; //Ôö¼Ó¼ÇÂ¼ÊıÁ¿
+    manager->total_records++; //å¢åŠ è®°å½•æ•°é‡
 }
 
-
 /*
-* ½«Êı¾İĞ´Èëµ½Êı¾İ¿âÖĞ
+* å°†æ•°æ®å†™å…¥åˆ°æ•°æ®åº“ä¸­
 */
 int write_to_database( PGconn* conn, const CacheManager* manager, const DbConnectInfo* db_info)
 {
-    //TODO:ÊµÏÖÅúÁ¿Ğ´ÈëÊı¾İ¿â£¬Èç¹ûĞ´ÈëÊ§°ÜÔò´´½¨Ò»¸öjsonÎÄ¼ş
+    //TODO:å®ç°æ‰¹é‡å†™å…¥æ•°æ®åº“ï¼Œå¦‚æœå†™å…¥å¤±è´¥åˆ™åˆ›å»ºä¸€ä¸ªjsonæ–‡ä»¶
     //XXX:
 
     conn = create_conn(db_info);
@@ -150,7 +149,7 @@ int write_to_database( PGconn* conn, const CacheManager* manager, const DbConnec
 
     if (!insert_batch_data(conn, manager))
     {
-        //NOTE:ÏÂ´ÎÌí¼ÓÎÄ¼şĞ´Èë·½°¸
+        //NOTE:ä¸‹æ¬¡æ·»åŠ æ–‡ä»¶å†™å…¥æ–¹æ¡ˆ
         return 0;
     }
 
@@ -159,7 +158,7 @@ int write_to_database( PGconn* conn, const CacheManager* manager, const DbConnec
 
 
 /*
-* ÇåÀí»º´æÊı¾İ
+* æ¸…ç†ç¼“å­˜æ•°æ®
 */
 int clear_cache_data(CacheManager* manager)
 {
@@ -189,7 +188,7 @@ int clear_cache_data(CacheManager* manager)
 
 
 /*
-* ÇåÀí»º´æ¹ÜÀíÆ÷
+* æ¸…ç†ç¼“å­˜ç®¡ç†å™¨
 */
 int clear_cache_manager(CacheManager* manager)
 {
@@ -201,7 +200,7 @@ int clear_cache_manager(CacheManager* manager)
 
 
 /*
-* »ñÈ¡»º´æ×´Ì¬
+* è·å–ç¼“å­˜çŠ¶æ€
 */
 unsigned get_cache_status(CacheManager* manager)
 {

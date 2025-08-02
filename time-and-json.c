@@ -1,4 +1,4 @@
-#include "time-and-json.h"
+﻿#include "time-and-json.h"
 
 
 int64_t get_milliseconds_timestamp()
@@ -7,3 +7,4 @@ int64_t get_milliseconds_timestamp()
 	gettimeofday(&tv, 0);
 	return (int64_t)tv.tv_sec * 1000 + tv.tv_usec / 1000;
 }
+

@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <sys/time.h>
 #include <stdint.h>

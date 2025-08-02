@@ -1,4 +1,4 @@
-
+ï»¿
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -9,7 +9,7 @@
 
 #include "masscan_main.h"
 #include "db-postgresql.h"
-#include "uthash.h" //¹þÏ£±í¿â
+#include "uthash.h" //å“ˆå¸Œè¡¨åº“
 
 #define CACHE_SIZE 1000
 
@@ -22,17 +22,18 @@ typedef struct {
 }Ipinfo;
 
 
+
 int main() {
-    printf("¿ªÊ¼");
+    printf("å¼€å§‹");
 
     CacheManager* manager = create_cache_manager();
     DbConnectInfo db_info;
-    db_info.ip = "127.0.0.1";               // Ö÷»úµØÖ·
-    db_info.port = 54321;                   // ¶Ë¿Ú
-    db_info.db_type = 0;                    // Êý¾Ý¿âÀàÐÍ£¬0Îªpostgresql
-    db_info.db_name = "scan";               // Êý¾Ý¿âÃû³Æ
-    db_info.username = "wsj";               // ÓÃ»§Ãû
-    db_info.password = "123456789";         // ÃÜÂë
+    db_info.ip = "127.0.0.1";               // ä¸»æœºåœ°å€
+    db_info.port = 54321;                   // ç«¯å£
+    db_info.db_type = 0;                    // æ•°æ®åº“ç±»åž‹ï¼Œ0ä¸ºpostgresql
+    db_info.db_name = "scan";               // æ•°æ®åº“åç§°
+    db_info.username = "wsj";               // ç”¨æˆ·å
+    db_info.password = "123456789";         // å¯†ç 
     PGconn* conn = create_conn(&db_info);
     if (!conn)
     {
@@ -47,63 +48,63 @@ int main() {
 }
 
 /*
-ÏÈ´´½¨Ò»¸ö×ÓÏß³Ì£¬È»ºóÔÚ×ÓÏß³ÌÖÐÖ´ÐÐmasscanÉ¨Ãè
+å…ˆåˆ›å»ºä¸€ä¸ªå­çº¿ç¨‹ï¼Œç„¶åŽåœ¨å­çº¿ç¨‹ä¸­æ‰§è¡Œmasscanæ‰«æ
 */
 
 int masscan_scan(PGconn* conn, Masscan_data* masscan_data, CacheManager* manager)
-{/// XXX:ÐèÒªÄÜ¹»½ÓÊÜipv6²¢´¦Àí
-    int pipe_fd[2];         // ¹ÜµÀÎÄ¼þÃèÊö·û
-    pid_t pid;              // ½ø³ÌID
+{/// XXX:éœ€è¦èƒ½å¤ŸæŽ¥å—ipv6å¹¶å¤„ç†
+    int pipe_fd[2];         // ç®¡é“æ–‡ä»¶æè¿°ç¬¦
+    pid_t pid;              // è¿›ç¨‹ID
 
 
-    // ´´½¨¹ÜµÀ
+    // åˆ›å»ºç®¡é“
     if (pipe(pipe_fd) == -1) {
-        perror("´´½¨¹ÜµÀÊ§°Ü");
+        perror("åˆ›å»ºç®¡é“å¤±è´¥");
         exit(EXIT_FAILURE);
     }
 
-    // ´´½¨×Ó½ø³Ì
+    // åˆ›å»ºå­è¿›ç¨‹
     pid = fork();
     if (pid == -1) {
-        perror("´´½¨×Ó½ø³ÌÊ§°Ü");
+        perror("åˆ›å»ºå­è¿›ç¨‹å¤±è´¥");
         exit(EXIT_FAILURE);
     }
 
-    if (pid == 0) { // ×Ó½ø³Ì
-        // ¹Ø±Õ¹ÜµÀ¶Á¶Ë
+    if (pid == 0) { // å­è¿›ç¨‹
+        // å…³é—­ç®¡é“è¯»ç«¯
         close(pipe_fd[0]);
-        // ½«±ê×¼Êä³öÖØ¶¨Ïòµ½¹ÜµÀÐ´¶Ë
+        // å°†æ ‡å‡†è¾“å‡ºé‡å®šå‘åˆ°ç®¡é“å†™ç«¯
         dup2(pipe_fd[1], STDOUT_FILENO);
-        // ½«±ê×¼´íÎóÊä³öÒ²ÖØ¶¨Ïòµ½¹ÜµÀ£¨²¶»ñËùÓÐÊä³ö£©
+        // å°†æ ‡å‡†é”™è¯¯è¾“å‡ºä¹Ÿé‡å®šå‘åˆ°ç®¡é“ï¼ˆæ•èŽ·æ‰€æœ‰è¾“å‡ºï¼‰
         dup2(pipe_fd[1], STDERR_FILENO);
-        // ¹Ø±Õ¹ÜµÀÐ´¶Ë
+        // å…³é—­ç®¡é“å†™ç«¯
         close(pipe_fd[1]);
-        // Ö´ÐÐ masscan£¬É¨Ãè 192.168.1.0/24 µÄ 80 ºÍ 22 ¶Ë¿Ú£¬Ê¹ÓÃ --output-format=list
+        // æ‰§è¡Œ masscanï¼Œæ‰«æ 192.168.1.0/24 çš„ 80 å’Œ 22 ç«¯å£ï¼Œä½¿ç”¨ --output-format=list
         execlp("./a", "a", "-p80,22", "47.122.119.111/24", "--rate=1000", "--banner", "--source-ip", "192.168.71.110", NULL);
-        // XXX:ÐèÒªÄÜ¹»½ÓÊÜÖ¸Áî£¬¶ø²»ÊÇÓ²±àÂë
+        // XXX:éœ€è¦èƒ½å¤ŸæŽ¥å—æŒ‡ä»¤ï¼Œè€Œä¸æ˜¯ç¡¬ç¼–ç 
 
-        // Èç¹û execlp Ê§°Ü
-        perror("Ö´ÐÐ masscan Ê§°Ü");
+        // å¦‚æžœ execlp å¤±è´¥
+        perror("æ‰§è¡Œ masscan å¤±è´¥");
         exit(EXIT_FAILURE);
     }
-    else { // ¸¸½ø³Ì
-        // ¹Ø±Õ¹ÜµÀÐ´¶Ë
+    else { // çˆ¶è¿›ç¨‹
+        // å…³é—­ç®¡é“å†™ç«¯
         close(pipe_fd[1]);
-        // ½«¹ÜµÀ¶Á¶Ë×ª»»Îª FILE* Á÷
+        // å°†ç®¡é“è¯»ç«¯è½¬æ¢ä¸º FILE* æµ
         FILE* fp = fdopen(pipe_fd[0], "r");
         if (fp == NULL) {
-            perror("×ª»»¹ÜµÀÎªÁ÷Ê§°Ü");
+            perror("è½¬æ¢ç®¡é“ä¸ºæµå¤±è´¥");
             exit(EXIT_FAILURE);
         }
-        // char line[MAX_LINE_SIZE];         // ¶ÁÈ¡ÐÐ»º³åÇø£¬Ôö´óÒÔ´¦Àí³¤Êä³ö
-        // char ip[MAX_IPV4_SIZE];            // ´æ´¢IPµØÖ·
-        // char protocol[MAX_PROTOCOL_SIZE];      // ´æ´¢Ð­Òé
-        // unsigned port;               // ´æ´¢¶Ë¿ÚºÅ
+        // char line[MAX_LINE_SIZE];         // è¯»å–è¡Œç¼“å†²åŒºï¼Œå¢žå¤§ä»¥å¤„ç†é•¿è¾“å‡º
+        // char ip[MAX_IPV4_SIZE];            // å­˜å‚¨IPåœ°å€
+        // char protocol[MAX_PROTOCOL_SIZE];      // å­˜å‚¨åè®®
+        // unsigned port;               // å­˜å‚¨ç«¯å£å·
 
         // char banner[MAX_BANNER_SIZE];
         // char service[MAX_SERVICE_SIZE];
         unsigned count = 0;   //count
-        // ÖðÐÐ¶ÁÈ¡ masscan Êä³ö
+        // é€è¡Œè¯»å– masscan è¾“å‡º
 
         
 
@@ -112,9 +113,9 @@ int masscan_scan(PGconn* conn, Masscan_data* masscan_data, CacheManager* manager
 
 
 
-        // ÇåÀí
+        // æ¸…ç†
         fclose(fp);
-        // µÈ´ý×Ó½ø³Ì½áÊø
+        // ç­‰å¾…å­è¿›ç¨‹ç»“æŸ
         wait(NULL);
     }
 
@@ -122,27 +123,27 @@ int masscan_scan(PGconn* conn, Masscan_data* masscan_data, CacheManager* manager
 }
 
 void masscan_output_format(FILE* fp, Masscan_data* data, CacheManager* manager)
-//TODO:ÐèÒª°ÑÊý¾ÝÍ³¼Æ³öÈ»ºóËÍÈëÊý¾Ý¿â£¬µ«Ä¿Ç°½öÓÃÊä³öÖÁjsonÎÄ¼þ×ö²âÊÔ
+//TODO:éœ€è¦æŠŠæ•°æ®ç»Ÿè®¡å‡ºç„¶åŽé€å…¥æ•°æ®åº“ï¼Œä½†ç›®å‰ä»…ç”¨è¾“å‡ºè‡³jsonæ–‡ä»¶åšæµ‹è¯•
 {
     unsigned long count = 0;
     while (fgets(data->line_data, sizeof(data->line_data), fp) != NULL) {
-        // È¥³ýÐÐÎ²»»ÐÐ·û
+        // åŽ»é™¤è¡Œå°¾æ¢è¡Œç¬¦
         data->line_data[strcspn(data->line_data, "\n")] = 0;
-        // ¼ì²éÊÇ·ñÎª¿ª·Å¶Ë¿ÚÊä³ö£¨ÒÔ "Discovered open port" ¿ªÍ·£©
+        // æ£€æŸ¥æ˜¯å¦ä¸ºå¼€æ”¾ç«¯å£è¾“å‡ºï¼ˆä»¥ "Discovered open port" å¼€å¤´ï¼‰
 
         if (strncmp(data->line_data, "Discovered open", 15) == 0) {
-            printf("Æ¥Åäµ½¿ª·Å¶Ë¿ÚÉ¨Ãè\n");
-            // ³¢ÊÔ½âÎö¸ñÊ½Îª "Discovered open port %d/%s on %s"
+            printf("åŒ¹é…åˆ°å¼€æ”¾ç«¯å£æ‰«æ\n");
+            // å°è¯•è§£æžæ ¼å¼ä¸º "Discovered open port %d/%s on %s"
             if (sscanf(data->line_data, "Discovered open  %u %9s %15s", &data->port, data->protocol, data->ipv4) == 3) {
-                // ³É¹¦½âÎö£¬´òÓ¡¸ñÊ½»¯Êä³ö
-                printf("No.%lu·¢ÏÖ¿ª·Å¶Ë¿Ú - IP: %s, ¶Ë¿Ú: %d, Ð­Òé: %s\n", ++count, data->ipv4, data->port, data->protocol);
+                // æˆåŠŸè§£æžï¼Œæ‰“å°æ ¼å¼åŒ–è¾“å‡º
+                printf("No.%luå‘çŽ°å¼€æ”¾ç«¯å£ - IP: %s, ç«¯å£: %d, åè®®: %s\n", ++count, data->ipv4, data->port, data->protocol);
             }
-            /*Æ¥ÅäbannerÉ¨Ãè*/
+            /*åŒ¹é…banneræ‰«æ*/
         }
         if (strncmp(data->line_data, "Banner", 6) == 0) {
-            printf("Æ¥Åäµ½BannerÉ¨Ãè\n");
+            printf("åŒ¹é…åˆ°Banneræ‰«æ\n");
             if (sscanf(data->line_data, "Banner %u %9s %15s %127s %5119[^\n]", &data->port, data->protocol, data->ipv4, data->service, data->banner) == 5) {
-                printf("No.%lu ·¢ÏÖ·þÎñ - IP: %s, ¶Ë¿Ú: %d, Ð­Òé: %s, ·þÎñ: %s, Banner: %s\n", ++count, data->ipv4, data->port, data->protocol, data->service, data->banner);
+                printf("No.%lu å‘çŽ°æœåŠ¡ - IP: %s, ç«¯å£: %d, åè®®: %s, æœåŠ¡: %s, Banner: %s\n", ++count, data->ipv4, data->port, data->protocol, data->service, data->banner);
             }
         }
 
