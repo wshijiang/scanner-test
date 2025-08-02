@@ -1,11 +1,17 @@
-﻿#pragma once
+﻿//#pragma once
 
-//#ifndef SCANINFO-CACHE_H
+
+
+#ifndef SCANINFO_CACHE_H
+
 
 #include <stdlib.h>
 #include <stdio.h>
+#include "postgresql/libpq-fe.h"
 #include "uthash.h"
-#include "db-postgresql.h"
+//#include "db-postgresql.h"
+
+typedef struct DbConnectInfo DbConnectInfo; // 前向声明DbConnectInfo结构体
 
 
 // 端口信息结构体
@@ -33,12 +39,6 @@ typedef struct {
     unsigned total_records;           // 总记录数（用于1000条批处理判断）
 } CacheManager;
 
-// //缓存状态
-// typedef struct {
-//     unsigned total;
-//     unsigned count;
-// }CacheStatus;
-
 
 CacheManager* create_cache_manager();
 IPEntry* create_ip_entry(const char*, unsigned, const char*);
@@ -52,4 +52,4 @@ int clear_cache_data(CacheManager*);
 int clear_cache_manager(CacheManager*);
 unsigned get_cache_status(CacheManager*);
 
-//#endif // !SCANINFO-CACHE_H
+#endif // !SCANINFO_CACHE_H
