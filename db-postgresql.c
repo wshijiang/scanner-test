@@ -1,6 +1,7 @@
 ﻿
 #include "db-postgresql.h"
-
+#include <string.h>
+#include <unistd.h>
 
 /**
 * 用于释放初始化sql语句所分配的内存

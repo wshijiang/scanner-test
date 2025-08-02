@@ -18,7 +18,7 @@
 /*masscan 输出一行的最大空间*/
 #define MAX_LINE_SIZE (MAX_IPV4_SIZE + MAX_PROTOCOL_SIZE + MAX_BANNER_SIZE)
 
-typedef struct
+typedef struct Masscan_data
 {
     char line_data[MAX_LINE_SIZE];
     char ipv4[MAX_IPV4_SIZE];

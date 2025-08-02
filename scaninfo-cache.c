@@ -127,6 +127,7 @@ int add_scan_result_to_cache(CacheManager* manager, const char* ip, const char* 
     if (!add_data_to_entry(entry, port, status, service, protocol, banner)) return 0;
 
     manager->total_records++; //增加记录数量
+    return 1;
 }
 
 /*
@@ -197,6 +198,7 @@ int clear_cache_manager(CacheManager* manager)
 
     clear_cache_data(manager);
     free(manager);
+    return 1;
 }
 
 
