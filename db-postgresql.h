@@ -1,8 +1,6 @@
 #pragma once
 
-#ifndef DB-POSTGRESQL_H
-
-
+//#ifndef DB-POSTGRESQL_H
 
 #include "postgresql/libpq-fe.h"
 #include <unistd.h>
@@ -35,4 +33,4 @@ PGconn* connect_to_postgresql(const DbConnectInfo*, const unsigned, unsigned);
 PGconn* create_conn(DbConnectInfo*); // TODO: todo
 int postgresql_init(const PGconn*);
 int insert_batch_data(const PGconn*, const CacheManager*);
-#endif // !DB-POSTGRESQL_H
+//#endif // !DB-POSTGRESQL_H
