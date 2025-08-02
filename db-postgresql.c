@@ -1,8 +1,9 @@
-
+ï»¿
 #include "db-postgresql.h"
 
+
 /**
-* ÓÃÓÚÊÍ·Å³õÊ¼»¯sqlÓï¾äËù·ÖÅäµÄÄÚ´æ
+* ç”¨äºé‡Šæ”¾åˆå§‹åŒ–sqlè¯­å¥æ‰€åˆ†é…çš„å†…å­˜
 */
 static int free_init_sql_memory(InitDatabaseSQL* idbsql, unsigned short count)
 {
@@ -18,7 +19,7 @@ static int free_init_sql_memory(InitDatabaseSQL* idbsql, unsigned short count)
 }
 
 /**
-* Èç¹ûÖ´ĞĞÓöµ½´íÎóÔò»áÇåÀíµô´«ÈëµÄres¡£²¢ÇÒ»áÖ´ĞĞÊÂÎñ»Ø¹ö²Ù×÷£¬ÕâÒ²ÒâÎ¶×ÅËùÓĞÓëÊı¾İ¿âÏà¹ØµÄ²Ù×÷±ØĞë´æÔÚÓÚÊÂÎñÖĞ¡£
+* å¦‚æœæ‰§è¡Œé‡åˆ°é”™è¯¯åˆ™ä¼šæ¸…ç†æ‰ä¼ å…¥çš„resã€‚å¹¶ä¸”ä¼šæ‰§è¡Œäº‹åŠ¡å›æ»šæ“ä½œï¼Œè¿™ä¹Ÿæ„å‘³ç€æ‰€æœ‰ä¸æ•°æ®åº“ç›¸å…³çš„æ“ä½œå¿…é¡»å­˜åœ¨äºäº‹åŠ¡ä¸­ã€‚
 */
 static int* to_table(PGconn* conn, PGresult* res, const char* insert_sql, const char* param, int nparmams)
 {
@@ -34,7 +35,7 @@ static int* to_table(PGconn* conn, PGresult* res, const char* insert_sql, const 
 	);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK)
 	{
-		fprintf(stderr, "Ö´ĞĞÓï¾ä´íÎó\n%s\n", PQerrorMessage(conn));
+		fprintf(stderr, "æ‰§è¡Œè¯­å¥é”™è¯¯\n%s\n", PQerrorMessage(conn));
 		PQclear(res);
 		postgresql_transaction(conn, "ROLLBACK");
 		return 0;
@@ -52,8 +53,8 @@ int postgresql_init(const PGconn* conn)
 	idbsql.i_sql = malloc(sizeof(InitDBSQL) * init_sql_count);
 	if (!idbsql.i_sql) return 0;
 
-	//TODO:Íê³ÉÆäËûsqlÓï¾ä
-	//BUG:ËÆºõ¸üĞÂÊ±¼ä²»¶Ô£¬¼ì²éËùÓĞµÄÊ±¼ä
+	//TODO:å®Œæˆå…¶ä»–sqlè¯­å¥
+	//BUG:ä¼¼ä¹æ›´æ–°æ—¶é—´ä¸å¯¹ï¼Œæ£€æŸ¥æ‰€æœ‰çš„æ—¶é—´
 	char* init_ips_sql = 
 		"CREATE TABLE IF NOT EXISTS ips( "
 			"ip_id SERIAL PRIMARY KEY, "
@@ -65,7 +66,7 @@ int postgresql_init(const PGconn* conn)
 		");";
 
 	/**
-	* ´´½¨port±í£¬Èç¹û²»´æÔÚÔò´´½¨
+	* åˆ›å»ºportè¡¨ï¼Œå¦‚æœä¸å­˜åœ¨åˆ™åˆ›å»º
 	*/
 	char* init_ports_sql = 
 		"CREATE TABLE IF NOT EXISTS ports( "
@@ -84,7 +85,7 @@ int postgresql_init(const PGconn* conn)
 
 
 	/**
-	* ´´½¨scaninfo±í
+	* åˆ›å»ºscaninfoè¡¨
 	*/
 	char* init_scaninfo_sql = 
 		"CREATE TABLE IF NOT EXISTS scaninfo( "
@@ -104,7 +105,7 @@ int postgresql_init(const PGconn* conn)
 				"ON UPDATE CASCADE "
 		");";
 
-	//BUG:ÈÎÎñ¿ªÊ¼ºÍ½áÊøÊ±¼ä²»¶Ô£¬²»ÄÜÄ¬ÈÏ
+	//BUG:ä»»åŠ¡å¼€å§‹å’Œç»“æŸæ—¶é—´ä¸å¯¹ï¼Œä¸èƒ½é»˜è®¤
 
 	char* init_scan_task_sql =
 		"CREATE TABLE IF NOT EXISTS scan_task( "
@@ -123,11 +124,11 @@ int postgresql_init(const PGconn* conn)
 	idbsql.i_sql[2].init_sql = strdup(init_scaninfo_sql);
 	idbsql.i_sql[3].init_sql = strdup(init_scan_task_sql);
 		
-	//¿ªÆôÊÂÎñ
+	//å¼€å¯äº‹åŠ¡
 	if (!postgresql_transaction(conn, "BEGIN")) return 0;
 
 
-	//Ö´ĞĞ´´½¨±íÓï¾ä
+	//æ‰§è¡Œåˆ›å»ºè¡¨è¯­å¥
 	{
 		PGresult* res;
 		for (unsigned i = 0; i < init_sql_count; i++)
@@ -135,10 +136,10 @@ int postgresql_init(const PGconn* conn)
 			res = PQexec(conn, idbsql.i_sql[i].init_sql);
 			if (PQresultStatus(res) != PGRES_COMMAND_OK)
 			{
-				fprintf(stderr, "³õÊ¼»¯Êı¾İ¿âÊ§°Ü£¡\n%s\n\n\n", PQerrorMessage(conn));
+				fprintf(stderr, "åˆå§‹åŒ–æ•°æ®åº“å¤±è´¥ï¼\n%s\n\n\n", PQerrorMessage(conn));
 				PQclear(res);
 				postgresql_transaction(conn, "ROLLBACK");
-				fprintf(stderr, "Ö´ĞĞ»Ø¹ö³É¹¦£¡");
+				fprintf(stderr, "æ‰§è¡Œå›æ»šæˆåŠŸï¼");
 				free_init_sql_memory(&idbsql, init_sql_count);
 				return 0;
 			}
@@ -147,9 +148,9 @@ int postgresql_init(const PGconn* conn)
 		
 	}
 
-	//BUG:ĞèÒª½â¾öÊÂÎñÖ´ĞĞÊ§°ÜµÄÎÊÌâ£¬ÈçÌá½»Ê§°ÜºÍ»Ø¹öÊ§°Ü¸ÃÔõÑù£¨¿ªÆôÊ§°ÜÖ±½ÓÍË³ö£©
+	//BUG:éœ€è¦è§£å†³äº‹åŠ¡æ‰§è¡Œå¤±è´¥çš„é—®é¢˜ï¼Œå¦‚æäº¤å¤±è´¥å’Œå›æ»šå¤±è´¥è¯¥æ€æ ·ï¼ˆå¼€å¯å¤±è´¥ç›´æ¥é€€å‡ºï¼‰
 
-	//Ìá½»ÊÂÎñ
+	//æäº¤äº‹åŠ¡
 	if (!postgresql_transaction(conn, "COMMIT")) return 0;
 	
 	free_init_sql_memory(&idbsql, init_sql_count);
@@ -160,7 +161,7 @@ PGconn* create_conn(DbConnectInfo* info)
 {
 	PGconn* conn = NULL;
 
-	/*¸ù¾İ db_type Ñ¡ÔñÊı¾İ¿â*/
+	/*æ ¹æ® db_type é€‰æ‹©æ•°æ®åº“*/
 	switch (info->db_type)
 	{
 		case 0 :
@@ -180,19 +181,19 @@ PGconn* connect_to_postgresql(const DbConnectInfo* info, const unsigned retry_ti
 {
 	char* conn_info = ("host=%s port=%u dbname=%s user=%s password=%s", info->ip, info->port, info->db_name, info->username, info->password);
 
-	/*×Ô¶¯ÖØÁ¬*/
+	/*è‡ªåŠ¨é‡è¿*/
 	for (unsigned i = 0; i < retry_times; i++)
 	{
 		PGconn* conn = PQconnectdb(conn_info);
 		if (PQstatus(conn))
 		{
-			fprintf(stderr, "Á¬½ÓÖÁÊı¾İ¿âÊ§°Ü: %s", PQerrorMessage(conn));
-			PQfinish(conn); /*½áÊøÁ¬½Ó*/
+			fprintf(stderr, "è¿æ¥è‡³æ•°æ®åº“å¤±è´¥: %s", PQerrorMessage(conn));
+			PQfinish(conn); /*ç»“æŸè¿æ¥*/
 			i++;
-			//ĞèÒªÈÕÖ¾
-			fprintf(stderr, "µÈ´ı %u ÃëºóÖØĞÂÁ¬½ÓÊı¾İ¿â", sleep_time);
+			//éœ€è¦æ—¥å¿—
+			fprintf(stderr, "ç­‰å¾… %u ç§’åé‡æ–°è¿æ¥æ•°æ®åº“", sleep_time);
 			sleep(sleep_time);
-			sleep_time *= 2; //µİÔöµÈ´ıÊ±¼ä
+			sleep_time *= 2; //é€’å¢ç­‰å¾…æ—¶é—´
 		}
 		else
 		{
@@ -200,12 +201,12 @@ PGconn* connect_to_postgresql(const DbConnectInfo* info, const unsigned retry_ti
 		}
 		
 	}
-	fprintf(stderr, "³¬¹ı×î´óÖØÊÔ´ÎÊı£¬·ÅÆúÁ¬½Ó\n");
+	fprintf(stderr, "è¶…è¿‡æœ€å¤§é‡è¯•æ¬¡æ•°ï¼Œæ”¾å¼ƒè¿æ¥\n");
 	return NULL;
 }
 
 /**
-* ¼Ç×¡£¬»¹ÓĞ¸öother²ÎÊıĞèÒª´¦Àí
+* è®°ä½ï¼Œè¿˜æœ‰ä¸ªotherå‚æ•°éœ€è¦å¤„ç†
 */
 int insert_batch_data(const PGconn* conn, const CacheManager* manager)
 {
@@ -223,40 +224,40 @@ int insert_batch_data(const PGconn* conn, const CacheManager* manager)
 	const char* insert_scan_info_no_other_sql = 
 		"INSERT INTO scaninfo ( port_id, scanner_name, protocol, service, banner ) VALUES ( $1, $2, $3, $4, $5 );";
 	
-	/*¿ªÆôpostgresqlÊı¾İ¿âÊÂÎñ¹¦ÄÜ*/
-	if (!postgresql_transaction(conn, "BEGIN")) return 0; //ÌáÇ°ÍË³ö
+	/*å¼€å¯postgresqlæ•°æ®åº“äº‹åŠ¡åŠŸèƒ½*/
+	if (!postgresql_transaction(conn, "BEGIN")) return 0; //æå‰é€€å‡º
 
 	HASH_ITER(hh, manager->ip_table, entry, temp)
 	{
 		
-		unsigned rows, columns; //´æ´¢·µ»ØµÄĞĞºÍÁĞÊıÁ¿
-		{ /*²åÈëips±í*/
-			const char* sql_param_values[] = { entry->ip }; //ÔİÊ±²»¹ÜÕâ¸ö,»¹ÓĞasnºÍisp
+		unsigned rows, columns; //å­˜å‚¨è¿”å›çš„è¡Œå’Œåˆ—æ•°é‡
+		{ /*æ’å…¥ipsè¡¨*/
+			const char* sql_param_values[] = { entry->ip }; //æš‚æ—¶ä¸ç®¡è¿™ä¸ª,è¿˜æœ‰asnå’Œisp
 			if (!to_table(conn, res, insert_ip_table_sql, sql_param_values, 3)) return 0;
 			rows = PQntuples(res);
 			columns = PQnfields(res);
-			 //NOTE:Í³Ò»Ê¹ÓÃºóÇå³ıresÖĞÁôÏÂµÄÄÚÈİ
+			 //NOTE:ç»Ÿä¸€ä½¿ç”¨åæ¸…é™¤resä¸­ç•™ä¸‹çš„å†…å®¹
 		}
 
-		/*»ñÈ¡É¨ÃèÆ÷Ãû³Æ*/
+		/*è·å–æ‰«æå™¨åç§°*/
 		const char* scanner_names = entry->scanner_name;
 
-		{ /*²åÈëports±í*/
-			unsigned long ip_id = PQgetvalue(res, 0, 0);
-			PQclear(res); //¸ÃresÒÑÊ¹ÓÃ
+		{ /*æ’å…¥portsè¡¨*/
+			const char* ip_id = PQgetvalue(res, 0, 0);
+			PQclear(res); //è¯¥reså·²ä½¿ç”¨
 			for (unsigned i = 0; i < entry->info_count; i++)
 			{
 				Info* info = &entry->infos[i];
 				const char* sql_param_values1[] = { ip_id, info->port };
 
-				//NOTE:ÈÕºóĞèÒªÌí¼ÓÏêÏ¸×¢ÊÍ
+				//NOTE:æ—¥åéœ€è¦æ·»åŠ è¯¦ç»†æ³¨é‡Š
 				if (!to_table(conn, res, insert_port_table_sql, sql_param_values1, 2)) return 0;
-				unsigned long port_id = PQgetvalue(res, 0, 0);
+				const char* port_id = PQgetvalue(res, 0, 0);
 				PQclear(res);
 
 				const char* sql_param_values2[] = { port_id, scanner_names, info->protocol, info->service, info->banner };
 
-				//BUG:»¹ĞèÒª´¦Àíother²ÎÊı£¬jsonb¸ñÊ½
+				//BUG:è¿˜éœ€è¦å¤„ç†otherå‚æ•°ï¼Œjsonbæ ¼å¼
 
 				if (!to_table(conn, res, insert_scan_info_no_other_sql, sql_param_values2, 5)) return 0;
 				PQclear(res);
@@ -273,7 +274,7 @@ int postgresql_transaction(PGconn* conn, const char* type)
 	PGresult* res = PQexec(conn, type);
 	if (PQresultStatus(res) != PGRES_COMMAND_OK)
 	{
-		fprintf(stderr, "ÊÂÎñ %s Ö´ĞĞÊ§°Ü\n´íÎóĞÅÏ¢£º\n", *type, PQerrorMessage(conn));
+		fprintf(stderr, "äº‹åŠ¡ %s æ‰§è¡Œå¤±è´¥\né”™è¯¯ä¿¡æ¯ï¼š\n", *type, PQerrorMessage(conn));
 		PQclear(res);
 		return 0;
 	}

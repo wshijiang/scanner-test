@@ -1,22 +1,21 @@
-#pragma once
+ï»¿#pragma once
 
 #include "scaninfo-cache.h"
 
 /*
-ÏÂÎª´¦ÀímasscanÊä³öµÄÔ¤Éè
+ä¸‹ä¸ºå¤„ç†masscanè¾“å‡ºçš„é¢„è®¾
 */
 
 
-
-/*ipv4µØÖ·×î´ó¿Õ¼ä*/
+/*ipv4åœ°å€æœ€å¤§ç©ºé—´*/
 #define MAX_IPV4_SIZE 16
-/*Ğ­Òé×î´ó¿Õ¼ä*/
+/*åè®®æœ€å¤§ç©ºé—´*/
 #define MAX_PROTOCOL_SIZE 10
-/*banner ×î´ó¿Õ¼ä*/
+/*banner æœ€å¤§ç©ºé—´*/
 #define MAX_BANNER_SIZE 1024 * 5
-/*·şÎñÕ¼ÓÃ¿Õ¼ä*/
+/*æœåŠ¡å ç”¨ç©ºé—´*/
 #define MAX_SERVICE_SIZE 128
-/*masscan Êä³öÒ»ĞĞµÄ×î´ó¿Õ¼ä*/
+/*masscan è¾“å‡ºä¸€è¡Œçš„æœ€å¤§ç©ºé—´*/
 #define MAX_LINE_SIZE (MAX_IPV4_SIZE + MAX_PROTOCOL_SIZE + MAX_BANNER_SIZE)
 
 typedef struct
