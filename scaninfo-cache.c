@@ -205,7 +205,7 @@ int clear_cache_manager(CacheManager* manager)
 /*
 * 获取缓存状态
 */
-unsigned get_cache_status(CacheManager* manager)
-{
-    return (manager->total_records, HASH_COUNT(manager->ip_table));
-}
+//unsigned get_cache_status(CacheManager* manager)
+//{
+//    return (manager->total_records, HASH_COUNT(manager->ip_table));
+//}
