@@ -1,11 +1,9 @@
-﻿#pragma once
+﻿//#pragma once
 
-//#ifndef DB-POSTGRESQL_H
+#ifndef DB_POSTGRESQL_H
 
 #include "postgresql/libpq-fe.h"
-#include <unistd.h>
 #include "scaninfo-cache.h"
-
 
 
 #define MAX_RETRY_TIMES 4
@@ -33,4 +31,4 @@ PGconn* connect_to_postgresql(const DbConnectInfo*, const unsigned, unsigned);
 PGconn* create_conn(DbConnectInfo*); // TODO: todo
 int postgresql_init(const PGconn*);
 int insert_batch_data(const PGconn*, const CacheManager*);
-//#endif // !DB-POSTGRESQL_H
+#endif // !DB_POSTGRESQL_H

@@ -21,7 +21,7 @@ static int free_init_sql_memory(InitDatabaseSQL* idbsql, unsigned short count)
 /**
 * 如果执行遇到错误则会清理掉传入的res。并且会执行事务回滚操作，这也意味着所有与数据库相关的操作必须存在于事务中。
 */
-static int* to_table(PGconn* conn, PGresult* res, const char* insert_sql, const char* param, int nparmams)
+static int to_table(PGconn* conn, PGresult* res, const char* insert_sql, const char* param, int nparmams)
 {
 	res = PQexecParams(
 		conn,
@@ -185,7 +185,7 @@ PGconn* connect_to_postgresql(const DbConnectInfo* info, const unsigned retry_ti
 	for (unsigned i = 0; i < retry_times; i++)
 	{
 		PGconn* conn = PQconnectdb(conn_info);
-		if (PQstatus(conn))
+		if (PQstatus(conn) != PGRES_COMMAND_OK) //BUG
 		{
 			fprintf(stderr, "连接至数据库失败: %s", PQerrorMessage(conn));
 			PQfinish(conn); /*结束连接*/

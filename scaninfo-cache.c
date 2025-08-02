@@ -7,6 +7,7 @@
 #include "db-postgresql.h"
 
 
+
 //初始化缓存管理器
 CacheManager* create_cache_manager()
 {
