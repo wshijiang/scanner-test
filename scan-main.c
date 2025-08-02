@@ -9,7 +9,7 @@
 
 #include "masscan_main.h"
 #include "db-postgresql.h"
-#include "uthash.h" //哈希表库
+//#include "uthash.h" //哈希表库
 
 #define CACHE_SIZE 1000
 

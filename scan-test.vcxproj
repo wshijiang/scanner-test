@@ -81,6 +81,7 @@
     <ClCompile Include="time-and-json.c" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="common-types.h" />
     <ClInclude Include="db-postgresql.h" />
     <ClInclude Include="masscan_main.h" />
     <ClInclude Include="scaninfo-cache.h" />
