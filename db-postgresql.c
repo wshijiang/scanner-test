@@ -195,18 +195,17 @@ PGconn* create_conn(const DbConnectInfo* info)
 PGconn* connect_to_postgresql(const DbConnectInfo* info, const unsigned retry_times, unsigned sleep_time)
 {
 	//char* conn_info = ("host=%s port=%u dbname=%s user=%s password=%s", info->ip, info->port, info->db_name, info->username, info->password);
-
-	const char* conn_info = malloc(strlen(info->ip) + 20 + strlen(info->db_name) + strlen(info->username) + strlen(info->password));
-	sprintf(conn_info, "host=%s port=%u dbname=%s user=%s password=%s", info->ip, info->port, info->db_name, info->username, info->password);
+	int len = snprintf(NULL, 0, "host=%s port=%u dbname=%s user=%s password=%s", info->ip, info->port, info->db_name, info->username, info->password);
+	const char* conn_info = malloc(len + 1);
+	snprintf(conn_info, len + 1,"host=%s port=%u dbname=%s user=%s password=%s", info->ip, info->port, info->db_name, info->username, info->password);
 	/*自动重连*/
 	for (unsigned i = 0; i < retry_times; i++)
 	{
 		PGconn* conn = PQconnectdb(conn_info);
-		if (PQstatus(conn) != PGRES_COMMAND_OK) //BUG
+		if (PQstatus(conn) != CONNECTION_OK) //BUG
 		{
 			fprintf(stderr, "连接至数据库失败: %s", PQerrorMessage(conn));
 			PQfinish(conn); /*结束连接*/
-			i++;
 			//需要日志
 			fprintf(stderr, "等待 %u 秒后重新连接数据库", sleep_time);
 			sleep(sleep_time);
