@@ -3,6 +3,19 @@
 #include <string.h>
 #include <unistd.h>
 
+int postgresql_transaction(PGconn* conn, const char* type)
+{
+	PGresult* res = PQexec(conn, type);
+	if (PQresultStatus(res) != PGRES_COMMAND_OK)
+	{
+		fprintf(stderr, "事务 %s 执行失败\n错误信息：%s\n", type, PQerrorMessage(conn));
+		PQclear(res);
+		return 0;
+	}
+	PQclear(res);
+	return 1;
+}
+
 /**
 * 用于释放初始化sql语句所分配的内存
 */
@@ -45,18 +58,7 @@ static int to_table(const PGconn* conn, PGresult* res, const char* insert_sql, c
 
 }
 
-int postgresql_transaction(PGconn* conn, const char* type)
-{
-	PGresult* res = PQexec(conn, type);
-	if (PQresultStatus(res) != PGRES_COMMAND_OK)
-	{
-		fprintf(stderr, "事务 %s 执行失败\n错误信息：%s\n", type, PQerrorMessage(conn));
-		PQclear(res);
-		return 0;
-	}
-	PQclear(res);
-	return 1;
-}
+
 
 int postgresql_init(const PGconn* conn)
 {
