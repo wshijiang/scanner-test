@@ -43,7 +43,7 @@ int main() {
     
     masscan_scan(conn, data, manager);
 
-
+	printf("扫描完成\n");
     return 0;
 }
 
