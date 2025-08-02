@@ -268,7 +268,7 @@ int insert_batch_data(const PGconn* conn, const CacheManager* manager)
 	return 1;
 }
 
-static int postgresql_transaction(PGconn* conn, const char* type)
+int postgresql_transaction(PGconn* conn, const char* type)
 {
 	PGresult* res = PQexec(conn, type);
 	if (PQresultStatus(res) != PGRES_COMMAND_OK)

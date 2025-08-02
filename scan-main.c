@@ -28,7 +28,7 @@ int main() {
     CacheManager* manager = create_cache_manager();
     DbConnectInfo db_info;
     db_info.ip = "127.0.0.1";               // 主机地址
-    db_info.port = 5432;                    // 端口
+    db_info.port = 54321;                   // 端口
     db_info.db_type = 0;                    // 数据库类型，0为postgresql
     db_info.db_name = "scan";               // 数据库名称
     db_info.username = "wsj";               // 用户名

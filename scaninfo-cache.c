@@ -137,7 +137,7 @@ int write_to_database( PGconn* conn, const CacheManager* manager, const DbConnec
     //TODO:实现批量写入数据库，如果写入失败则创建一个json文件
     //XXX:
 
-    PGconn* conn = create_conn(db_info);
+    conn = create_conn(db_info);
     if (!conn)
     {
         return 0;
