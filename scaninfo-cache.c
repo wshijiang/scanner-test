@@ -130,30 +130,39 @@ int add_scan_result_to_cache(CacheManager* manager, const char* ip, const char* 
     return 1;
 }
 
+int check_write(const CacheManager* manager)
+{
+	if (!manager) return 0;
+    if (manager->total_records >= CACHE_SIZE) return 1;
+    if (stop_signal) return 1;
+
+    return 0;
+}
+
 /*
 * 将数据写入到数据库中
 */
-int write_to_database( PGconn* conn, const CacheManager* manager, const DbConnectInfo* db_info)
+int write_to_database(const  PGconn* conn, const CacheManager* manager)
 {
     //TODO:实现批量写入数据库，如果写入失败则创建一个json文件
     //XXX:
 
-    conn = create_conn(db_info);
+    //conn = create_conn(db_info);
     if (!conn)
     {
         return 0;
     }
-
-    if (!postgresql_init(conn))
+    if (check_write)
     {
-        return 0;
-    }
-
-    if (!insert_batch_data(conn, manager))
-    {
-        //NOTE:下次添加文件写入方案
-        return 0;
-    }
+		printf("缓存数达到%d条，开始写入数据库\n", manager->total_records);
+        if (!insert_batch_data(conn, manager))
+        {
+            fprintf(stderr, "数据插入数据库失败\n");
+            //NOTE:下次添加文件写入方案
+            return 0;
+        }
+        clear_cache_data(manager);
+	}
 
     return 1;
 }

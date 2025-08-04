@@ -29,8 +29,18 @@ typedef struct Masscan_data
     unsigned port;
 } Masscan_data;
 
+typedef struct MasscanConfig
+{
+    char* masscan_path; // masscan可执行文件路径
+    char* banner_scan_ip;
+	char* target_ip; // 扫描目标IP
+    char* target_port;
+    char* rate;      // 扫描速率
+} MasscanConfig;;
 
 
 
-int masscan_scan(PGconn*, Masscan_data*, CacheManager*);
-void masscan_output_format(FILE*, Masscan_data*, CacheManager*);
+int masscan_scan(PGconn*, Masscan_data*, CacheManager*, MasscanConfig*);
+int masscan_output_format(PGconn*, FILE*, Masscan_data*, CacheManager*);
+int check_masscan_config(MasscanConfig*);
+int free_masscan_config(MasscanConfig*);

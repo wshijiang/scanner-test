@@ -6,25 +6,42 @@
 #include <sys/wait.h>
 #include <string.h>
 #include <postgresql/libpq-fe.h>
+#include <signal.h>
 
 #include "masscan_main.h"
 #include "db-postgresql.h"
 //#include "uthash.h" //哈希表库
 
-#define CACHE_SIZE 1000
 
-int stop_signal = 0;
+void signal_handler(int signum)
+{
+    if (signum == SIGINT || signum == SIGTERM) {
+        stop_signal = 1;
+        printf("收到停止信号，正在清理资源...\n");
+        // 可以在这里添加清理代码
+    }
+}
 
-typedef struct {
-    char* ip;
-    char* service;
-    unsigned port;
-}Ipinfo;
+int sign_signal_func()
+{
+    if (signal(SIGINT, signal_handler) == SIG_ERR) {
+        perror("无法捕获 SIGINT 信号");
+        return 0;
+    }
+    if (signal(SIGTERM, signal_handler) == SIG_ERR) {
+        perror("无法捕获 SIGTERM 信号");
+        return 0;
+    }
+    return 1;
+}
 
 
 
-int main() {
+
+int main(int argc, char* argv[]) {
+    if (argc != 6) return 0;
 	setbuf(stdout, NULL); // 禁用缓冲，确保输出立即显示
+    if (!sign_signal_func) return 0;
     printf("开始\n");
 
     CacheManager* manager = create_cache_manager();
@@ -41,20 +58,53 @@ int main() {
         clear_cache_manager(manager);
         exit(1);
     }
-    Masscan_data* data = malloc(sizeof(Masscan_data));
-    if (!data)
+    if (!postgresql_init(conn))
     {
         clear_cache_manager(manager);
         PQfinish(conn);
         exit(1);
     }
-    
-    masscan_scan(conn, data, manager);
 
-	printf("扫描完成\n");
+    Masscan_data* data = malloc(sizeof(Masscan_data));
+    if (!data)
+    {
+		fprintf(stderr, "Masscan data内存分配失败\n");
+        clear_cache_manager(manager);
+        PQfinish(conn);
+        exit(1);
+    } 
+	MasscanConfig* masscan_config = malloc(sizeof(MasscanConfig));
+    if (!check_masscan_config(masscan_config))
+    {
+        free_masscan_config(masscan_config);
+        return 0;
+    }
+
+
+
+    masscan_config->target_ip = strdup(argv[1]);
+    masscan_config->target_port = strdup(argv[2]);
+    masscan_config->masscan_path = strdup(argv[5]);
+    masscan_config->banner_scan_ip = strdup(argv[4]);
+    masscan_config->rate = strdup(argv[3]);
+    
+    if (!stop_signal)
+    {
+        masscan_scan(conn, data, manager, masscan_config);
+        printf("扫描完成\n");
+    }
+    
+
+	
+
+    /**
+    * 清理分配的内存
+    */
     free(data);
     PQfinish(conn);
     clear_cache_manager(manager);
+    free_masscan_config(masscan_config);
+
     return 0;
 }
 
@@ -62,7 +112,7 @@ int main() {
 先创建一个子线程，然后在子线程中执行masscan扫描
 */
 
-int masscan_scan(PGconn* conn, Masscan_data* masscan_data, CacheManager* manager)
+int masscan_scan(PGconn* conn, Masscan_data* masscan_data, CacheManager* manager, MasscanConfig* masscan_config)
 {/// XXX:需要能够接受ipv6并处理
     int pipe_fd[2];         // 管道文件描述符
     pid_t pid;              // 进程ID
@@ -91,7 +141,7 @@ int masscan_scan(PGconn* conn, Masscan_data* masscan_data, CacheManager* manager
         // 关闭管道写端
         close(pipe_fd[1]);
         // 执行 masscan，扫描 192.168.1.0/24 的 80 和 22 端口，使用 --output-format=list
-        execlp("./a", "a", "-p80,22", "47.122.119.111/24", "--rate=1000", "--banner", "--source-ip", "192.168.71.110", NULL);
+        execlp("./a", "a", "-p80,22", masscan_config->target_ip, "--rate=1000", "--banner", "--source-ip", masscan_config->banner_scan_ip, NULL);
         // XXX:需要能够接受指令，而不是硬编码
 
         // 如果 execlp 失败
@@ -107,22 +157,14 @@ int masscan_scan(PGconn* conn, Masscan_data* masscan_data, CacheManager* manager
             perror("转换管道为流失败");
             exit(EXIT_FAILURE);
         }
-        // char line[MAX_LINE_SIZE];         // 读取行缓冲区，增大以处理长输出
-        // char ip[MAX_IPV4_SIZE];            // 存储IP地址
-        // char protocol[MAX_PROTOCOL_SIZE];      // 存储协议
-        // unsigned port;               // 存储端口号
-
-        // char banner[MAX_BANNER_SIZE];
-        // char service[MAX_SERVICE_SIZE];
-        unsigned count = 0;   //count
-        // 逐行读取 masscan 输出
-
-        
 
 
-        //masscan_output_format(fp, data, db);
-
-
+        if (!masscan_output_format(conn, fp, masscan_data, manager))
+        {
+            fclose(fp);
+			wait(NULL); // 等待子进程结束
+            return 0;
+        }
 
         // 清理
         fclose(fp);
@@ -130,10 +172,10 @@ int masscan_scan(PGconn* conn, Masscan_data* masscan_data, CacheManager* manager
         wait(NULL);
     }
 
-    return 0;
+    return 1;
 }
 
-void masscan_output_format(FILE* fp, Masscan_data* data, CacheManager* manager)
+int masscan_output_format(PGconn* conn, FILE* fp, Masscan_data* data, CacheManager* manager)
 //TODO:需要把数据统计出然后送入数据库，但目前仅用输出至json文件做测试
 {
     unsigned long count = 0;
@@ -147,17 +189,39 @@ void masscan_output_format(FILE* fp, Masscan_data* data, CacheManager* manager)
             // 尝试解析格式为 "Discovered open port %d/%s on %s"
             if (sscanf(data->line_data, "Discovered open  %u %9s %15s", &data->port, data->protocol, data->ipv4) == 3) {
                 // 成功解析，打印格式化输出
-                printf("No.%lu发现开放端口 - IP: %s, 端口: %d, 协议: %s\n", ++count, data->ipv4, data->port, data->protocol);
+                //printf("No.%lu发现开放端口 - IP: %s, 端口: %d, 协议: %s\n", ++count, data->ipv4, data->port, data->protocol);
             }
             /*匹配banner扫描*/
         }
         if (strncmp(data->line_data, "Banner", 6) == 0) {
             printf("匹配到Banner扫描\n");
             if (sscanf(data->line_data, "Banner %u %9s %15s %127s %5119[^\n]", &data->port, data->protocol, data->ipv4, data->service, data->banner) == 5) {
-                printf("No.%lu 发现服务 - IP: %s, 端口: %d, 协议: %s, 服务: %s, Banner: %s\n", ++count, data->ipv4, data->port, data->protocol, data->service, data->banner);
+                //printf("No.%lu 发现服务 - IP: %s, 端口: %d, 协议: %s, 服务: %s, Banner: %s\n", ++count, data->ipv4, data->port, data->protocol, data->service, data->banner);
+                if (!write_to_database(conn, manager)) return 0;
+                if (stop_signal) return 0;                        //收到停止信号，直接退出函数。（就目前为止，我认为 0 和 1 都可以）
             }
         }
 
     }
+    return 1;
+}
+
+int check_masscan_config(MasscanConfig* masscan_config)
+{
+    if (!masscan_config->target_ip || !masscan_config->target_port || !masscan_config->masscan_path || !masscan_config->banner_scan_ip || !masscan_config->rate)
+    {
+        return 0;
+    }
+    return 1;
+}
+
+int free_masscan_config(MasscanConfig* masscan_config)
+{
+    if (!masscan_config->target_ip) free(masscan_config->target_ip);
+    if (!masscan_config->target_port) free(masscan_config->target_port);
+    if (!masscan_config->masscan_path) free(masscan_config->masscan_path);
+    if (!masscan_config->banner_scan_ip) free(masscan_config->banner_scan_ip);
+    if (!masscan_config->rate) free(masscan_config->rate);
+    return 1;
 }
 
