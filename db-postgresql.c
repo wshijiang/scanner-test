@@ -70,12 +70,14 @@ int postgresql_init(const PGconn* conn)
 
 	//TODO:完成其他sql语句
 	//BUG:似乎更新时间不对，检查所有的时间
+	//NOTE:所有的时间戳都使用毫秒级别的时间戳，单位为毫秒
 	char* init_ips_sql = 
 		"CREATE TABLE IF NOT EXISTS ips( "
+			"task_id INT NOT NULL, "
 			"ip_id SERIAL PRIMARY KEY, "
 			"ip_address INET NOT NULL UNIQUE,"
-			"asn TEXT DEFAULT 'unknown', "
-			"isp TEXT DEFAULT 'unknown', "
+			"asn TEXT DEFAULT NULL, "
+			"isp TEXT DEFAULT NULL, "
 			"create_time BIGINT DEFAULT (EXTRACT(EPOCH FROM CURRENT_TIMESTAMP) * 1000)::BIGINT,"
 			"update_time BIGINT DEFAULT (EXTRACT(EPOCH FROM CURRENT_TIMESTAMP) * 1000)::BIGINT "
 		");";
@@ -129,9 +131,11 @@ int postgresql_init(const PGconn* conn)
 			"task_target INET NOT NULL, "
 			"task_create_time BIGINT DEFAULT (EXTRACT(EPOCH FROM CURRENT_TIMESTAMP) * 1000)::BIGINT, "
 			"task_level INT NOT NULL CHECK ( task_level >= 0 AND task_level <=4 ), "
-			"task_start_time BIGINT , "
-			"task_end_time BIGINT , "
+			"task_start_time BIGINT DEFAULT NULL, "
+			"task_end_time BIGINT DEFAULT NULL, "
+			"remarks TEXT DEFAULT NULL, "
 		");";
+
 
 
 	idbsql.i_sql[0].init_sql = strdup(init_ips_sql);
@@ -224,7 +228,7 @@ PGconn* connect_to_postgresql(const DbConnectInfo* info, const unsigned retry_ti
 }
 
 /**
-* 记住，还有个other参数需要处理
+* NOTE记住，还有个other参数需要处理
 */
 int insert_batch_data(const PGconn* conn, const CacheManager* manager)
 {
@@ -288,8 +292,5 @@ int insert_batch_data(const PGconn* conn, const CacheManager* manager)
 	postgresql_transaction(conn, "COMMIT");
 	return 1;
 }
-
-
-
 
 

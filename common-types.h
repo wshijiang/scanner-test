@@ -4,6 +4,9 @@
 #include "uthash.h"
 #include "postgresql/libpq-fe.h"
 
+#define CACHE_SIZE 1000
+int stop_signal = 0;
+
 // 把 DbConnectInfo 移到这里
 typedef struct DbConnectInfo {
     char* ip;
