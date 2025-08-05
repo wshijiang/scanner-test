@@ -11,7 +11,7 @@
 #include "masscan_main.h"
 #include "db-postgresql.h"
 //#include "uthash.h" //哈希表库
-
+int stop_signal = 0;
 
 void signal_handler(int signum)
 {
@@ -35,7 +35,14 @@ int sign_signal_func()
     return 1;
 }
 
+int check_write(const CacheManager* manager)
+{
+    if (!manager) return 0;
+    if (manager->total_records >= CACHE_SIZE) return 1;
+    if (stop_signal) return 1;
 
+    return 0;
+}
 
 
 int main(int argc, char* argv[]) {

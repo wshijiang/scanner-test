@@ -5,7 +5,7 @@
 #include "postgresql/libpq-fe.h"
 
 #define CACHE_SIZE 1000
-int stop_signal = 0;
+
 
 // 把 DbConnectInfo 移到这里
 typedef struct DbConnectInfo {
@@ -44,5 +44,5 @@ typedef struct CacheManager {
     unsigned total_records;           // 总记录数（用于1000条批处理判断）
 } CacheManager;
 
-
+int check_write(const CacheManager*);
 #endif
