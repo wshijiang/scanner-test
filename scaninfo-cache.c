@@ -71,7 +71,7 @@ int expend_info_arry(IPEntry* entry)
 * 将数据添加到条目中
 */
 int add_data_to_entry(IPEntry* entry, \
-    unsigned short port, const char* status, const char* service, const char* protocol, const char* banner)
+    unsigned short port, const char* service, const char* protocol, const char* banner)
 {
     //检查infos容量是否需要扩容
     if (entry->info_count >= entry->info_capacity)
@@ -83,14 +83,13 @@ int add_data_to_entry(IPEntry* entry, \
     }
     Info* info = &entry->infos[entry->info_count];
     info->port = port;
-    info->status = strdup(status);
+    //info->status = strdup(status);
     info->service = strdup(service);
     info->protocol = strdup(protocol);
     info->banner = strdup(banner);
 
-    if (!info->status || !info->service || !info->protocol || !info->banner)
+    if (!info->service || !info->protocol || !info->banner)
     {
-        free(info->status);
         free(info->service);
         free(info->protocol);
         free(info->banner);
@@ -107,7 +106,7 @@ int add_data_to_entry(IPEntry* entry, \
 * 将数据添加到缓存中
 */
 int add_scan_result_to_cache(CacheManager* manager, const char* ip, const char* scanner_name, \
-    unsigned short port, const char* status, const char* service, const char* protocol, const char* banner)
+    unsigned short port, const char* service, const char* protocol, const char* banner)
 {
     IPEntry* entry;
     HASH_FIND_STR(manager->ip_table, ip, entry);
@@ -124,7 +123,7 @@ int add_scan_result_to_cache(CacheManager* manager, const char* ip, const char* 
         HASH_ADD_KEYPTR(hh, manager->ip_table, entry->ip, strlen(entry->ip), entry);
     }
 
-    if (!add_data_to_entry(entry, port, status, service, protocol, banner)) return 0;
+    if (!add_data_to_entry(entry, port, service, protocol, banner)) return 0;
 
     manager->total_records++; //增加记录数量
     return 1;
@@ -158,11 +157,13 @@ int write_to_database(const  PGconn* conn, const CacheManager* manager)
         if (!insert_batch_data(conn, manager))
         {
             fprintf(stderr, "数据插入数据库失败\n");
+            clear_cache_data(manager);
             //NOTE:下次添加文件写入方案
             return 0;
         }
         clear_cache_data(manager);
 	}
+    
 
     return 1;
 }
@@ -181,7 +182,6 @@ int clear_cache_data(CacheManager* manager)
 
         for (int i = 0; i < entry->info_count; i++)
         {
-            free(entry->infos[i].status);
             free(entry->infos[i].service);
             free(entry->infos[i].protocol);
             free(entry->infos[i].banner);

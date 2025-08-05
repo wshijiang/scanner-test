@@ -21,7 +21,8 @@ typedef struct DbConnectInfo {
 // 端口信息结构体
 typedef struct Info {
     unsigned short port;
-    char* status;
+    //char* status;               //BUG 需要确定是否需要该参数，并在所有代码中移除相关的 
+    //                            //TODO 删掉状态参数
     char* service;
     char* banner;
     char* protocol;
