@@ -44,3 +44,4 @@ int masscan_scan(PGconn*, Masscan_data*, CacheManager*, MasscanConfig*);
 int masscan_output_format(PGconn*, FILE*, Masscan_data*, CacheManager*, MasscanConfig*, const char*);
 int check_masscan_config(MasscanConfig*);
 int free_masscan_config(MasscanConfig*);
+//int check_write(const CacheManager*);

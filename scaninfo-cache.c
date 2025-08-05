@@ -129,14 +129,7 @@ int add_scan_result_to_cache(CacheManager* manager, const char* ip, const char* 
     return 1;
 }
 
-int check_write(const CacheManager* manager)
-{
-	if (!manager) return 0;
-    if (manager->total_records >= CACHE_SIZE) return 1;
-    if (stop_signal) return 1;
 
-    return 0;
-}
 
 /*
 * 将数据写入到数据库中
