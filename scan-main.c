@@ -159,13 +159,15 @@ int masscan_scan(PGconn* conn, Masscan_data* masscan_data, CacheManager* manager
         }
 
 
-        if (!masscan_output_format(conn, fp, masscan_data, manager))
+        if (!masscan_output_format(conn, fp, masscan_data, manager, masscan_config, "masscan"))
         {
+            clear_cache_data(manager);
             fclose(fp);
 			wait(NULL); // 等待子进程结束
             return 0;
         }
 
+        clear_cache_data(manager);
         // 清理
         fclose(fp);
         // 等待子进程结束
@@ -175,7 +177,7 @@ int masscan_scan(PGconn* conn, Masscan_data* masscan_data, CacheManager* manager
     return 1;
 }
 
-int masscan_output_format(PGconn* conn, FILE* fp, Masscan_data* data, CacheManager* manager)
+int masscan_output_format(PGconn* conn, FILE* fp, Masscan_data* data, CacheManager* manager, MasscanConfig* masscan_config, const char* scanner_name)
 //TODO:需要把数据统计出然后送入数据库，但目前仅用输出至json文件做测试
 {
     unsigned long count = 0;
@@ -197,6 +199,7 @@ int masscan_output_format(PGconn* conn, FILE* fp, Masscan_data* data, CacheManag
                 //printf("No.%lu 发现服务 - IP: %s, 端口: %d, 协议: %s, 服务: %s, Banner: %s\n", ++count, data->ipv4, data->port, data->protocol, data->service, data->banner);
                 if (!write_to_database(conn, manager)) return 0;
                 if (stop_signal) return 0;                        //收到停止信号，直接退出函数。（就目前为止，我认为 0 和 1 都可以）
+                if (!add_scan_result_to_cache(manager, data->ipv4, scanner_name, data->port, data->service, data->protocol, data->banner)) return 0;
             }
         }
 
