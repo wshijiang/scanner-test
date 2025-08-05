@@ -25,11 +25,11 @@ void signal_handler(int signum)
 int sign_signal_func()
 {
     if (signal(SIGINT, signal_handler) == SIG_ERR) {
-        perror("无法捕获 SIGINT 信号");
+        perror("无法捕获 SIGINT 信号\n");
         return 0;
     }
     if (signal(SIGTERM, signal_handler) == SIG_ERR) {
-        perror("无法捕获 SIGTERM 信号");
+        perror("无法捕获 SIGTERM 信号\n");
         return 0;
     }
     return 1;
@@ -185,7 +185,6 @@ int masscan_output_format(PGconn* conn, FILE* fp, Masscan_data* data, CacheManag
         // 检查是否为开放端口输出（以 "Discovered open port" 开头）
 
         if (strncmp(data->line_data, "Discovered open", 15) == 0) {
-            printf("匹配到开放端口扫描\n");
             // 尝试解析格式为 "Discovered open port %d/%s on %s"
             if (sscanf(data->line_data, "Discovered open  %u %9s %15s", &data->port, data->protocol, data->ipv4) == 3) {
                 // 成功解析，打印格式化输出
@@ -194,7 +193,6 @@ int masscan_output_format(PGconn* conn, FILE* fp, Masscan_data* data, CacheManag
             /*匹配banner扫描*/
         }
         if (strncmp(data->line_data, "Banner", 6) == 0) {
-            printf("匹配到Banner扫描\n");
             if (sscanf(data->line_data, "Banner %u %9s %15s %127s %5119[^\n]", &data->port, data->protocol, data->ipv4, data->service, data->banner) == 5) {
                 //printf("No.%lu 发现服务 - IP: %s, 端口: %d, 协议: %s, 服务: %s, Banner: %s\n", ++count, data->ipv4, data->port, data->protocol, data->service, data->banner);
                 if (!write_to_database(conn, manager)) return 0;
