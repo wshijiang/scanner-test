@@ -44,6 +44,15 @@ IPEntry* create_ip_entry(const char* ip, unsigned initial_capacity, const char* 
         return NULL;
     }
 
+	entry->scanner_name = strdup(scanner_name);
+    if (!entry->scanner_name)
+    {
+        free(entry->infos);
+        free(entry->ip);
+        free(entry);
+        return NULL;
+	}
+
     entry->info_capacity = initial_capacity;
     entry->info_count = 0; //已存储的信息条数，创建条目时默认为0
     return entry;
@@ -144,18 +153,16 @@ int write_to_database(const  PGconn* conn, const CacheManager* manager)
     {
         return 0;
     }
-    if (check_write)
+
+	printf("缓存数达到%d条，开始写入数据库\n", manager->total_records);
+    if (!insert_batch_data(conn, manager))
     {
-		printf("缓存数达到%d条，开始写入数据库\n", manager->total_records);
-        if (!insert_batch_data(conn, manager))
-        {
-            fprintf(stderr, "数据插入数据库失败\n");
-            clear_cache_data(manager);
-            //NOTE:下次添加文件写入方案
-            return 0;
-        }
+        fprintf(stderr, "数据插入数据库失败\n");
         clear_cache_data(manager);
-	}
+        //NOTE:下次添加文件写入方案
+        return 0;
+    }
+    clear_cache_data(manager);
     
 
     return 1;
