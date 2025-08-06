@@ -24,6 +24,6 @@ typedef struct InitDatabaseSQL {
 
 PGconn* connect_to_postgresql(const DbConnectInfo*, const unsigned, unsigned);
 PGconn* create_conn(const DbConnectInfo*); // TODO: todo
-int postgresql_init(const PGconn*);
+int postgresql_init(PGconn*);
 int insert_batch_data(const PGconn*, const CacheManager*);
 #endif // !DB_POSTGRESQL_H

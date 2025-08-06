@@ -157,7 +157,7 @@ int masscan_scan(PGconn* conn, Masscan_data* masscan_data, CacheManager* manager
         // 关闭管道写端
         close(pipe_fd[1]);
         // 执行 masscan，扫描 192.168.1.0/24 的 80 和 22 端口，使用 --output-format=list
-        execlp("./a", "a", "-p80,22,53,8000,7601", masscan_config->target_ip, "--rate=1000", "--banner", "--source-ip", masscan_config->banner_scan_ip, NULL);
+        execlp("./a", "a", "-p80,22,53,8000,7601", masscan_config->target_ip, "--rate=10000", "--banner", "--source-ip", masscan_config->banner_scan_ip, NULL);
         // XXX:需要能够接受指令，而不是硬编码
 
         // 如果 execlp 失败
