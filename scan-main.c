@@ -38,17 +38,19 @@ int sign_signal_func()
 int check_write(const CacheManager* manager)
 {
     if (!manager) return 0;
-    if (manager->total_records >= CACHE_SIZE) return 1;
-    if (stop_signal) return 1;
+    if (stop_signal == 1) return 1; //更改写入数据库逻辑，仅在收到停止信号或结束扫描时写入，没有写入条数限制
 
     return 0;
 }
 
 
 int main(int argc, char* argv[]) {
-    if (argc != 6) return 0;
+    if (argc != 6)
+    {
+        printf("参数不足，只有%d\n", argc);
+    }
 	setbuf(stdout, NULL); // 禁用缓冲，确保输出立即显示
-    if (!sign_signal_func) return 0;
+    if (!sign_signal_func()) return 0;                    //注册信号处理函数
     printf("开始\n");
 
     CacheManager* manager = create_cache_manager();
@@ -65,6 +67,7 @@ int main(int argc, char* argv[]) {
         clear_cache_manager(manager);
         exit(1);
     }
+    printf("开始初始数据库\n");
     if (!postgresql_init(conn))
     {
         clear_cache_manager(manager);
@@ -80,12 +83,17 @@ int main(int argc, char* argv[]) {
         PQfinish(conn);
         exit(1);
     } 
+    printf("分配masscan data成功\n");
 	MasscanConfig* masscan_config = malloc(sizeof(MasscanConfig));
-    if (!check_masscan_config(masscan_config))
+    /*if (!check_masscan_config(masscan_config))
     {
         free_masscan_config(masscan_config);
-        return 0;
-    }
+        clear_cache_manager(manager);
+        PQfinish(conn);
+        exit(1);
+    }*/
+    if (!masscan_config) return 0;
+    printf("分配masscan config成功\n");
 
 
 
@@ -111,6 +119,7 @@ int main(int argc, char* argv[]) {
     PQfinish(conn);
     clear_cache_manager(manager);
     free_masscan_config(masscan_config);
+    printf("垃圾清理完毕\n");
 
     return 0;
 }
@@ -148,7 +157,7 @@ int masscan_scan(PGconn* conn, Masscan_data* masscan_data, CacheManager* manager
         // 关闭管道写端
         close(pipe_fd[1]);
         // 执行 masscan，扫描 192.168.1.0/24 的 80 和 22 端口，使用 --output-format=list
-        execlp("./a", "a", "-p80,22", masscan_config->target_ip, "--rate=1000", "--banner", "--source-ip", masscan_config->banner_scan_ip, NULL);
+        execlp("./a", "a", "-p80,22,53,8000,7601", masscan_config->target_ip, "--rate=1000", "--banner", "--source-ip", masscan_config->banner_scan_ip, NULL);
         // XXX:需要能够接受指令，而不是硬编码
 
         // 如果 execlp 失败
@@ -187,30 +196,39 @@ int masscan_scan(PGconn* conn, Masscan_data* masscan_data, CacheManager* manager
 int masscan_output_format(PGconn* conn, FILE* fp, Masscan_data* data, CacheManager* manager, MasscanConfig* masscan_config, const char* scanner_name)
 //TODO:需要把数据统计出然后送入数据库，但目前仅用输出至json文件做测试
 {
-    unsigned long count = 0;
+    //unsigned long count = 0;
     while (fgets(data->line_data, sizeof(data->line_data), fp) != NULL) {
         // 去除行尾换行符
         data->line_data[strcspn(data->line_data, "\n")] = 0;
         // 检查是否为开放端口输出（以 "Discovered open port" 开头）
 
-        if (strncmp(data->line_data, "Discovered open", 15) == 0) {
-            // 尝试解析格式为 "Discovered open port %d/%s on %s"
-            if (sscanf(data->line_data, "Discovered open  %u %9s %15s", &data->port, data->protocol, data->ipv4) == 3) {
-                // 成功解析，打印格式化输出
-                //printf("No.%lu发现开放端口 - IP: %s, 端口: %d, 协议: %s\n", ++count, data->ipv4, data->port, data->protocol);
-            }
-            /*匹配banner扫描*/
-        }
+        //if (strncmp(data->line_data, "Discovered open", 15) == 0) {
+        //    // 尝试解析格式为 "Discovered open port %d/%s on %s"
+        //    if (sscanf(data->line_data, "Discovered open  %u %9s %15s", &data->port, data->protocol, data->ipv4) == 3) {
+        //        // 成功解析，打印格式化输出
+        //        //printf("No.%lu发现开放端口 - IP: %s, 端口: %d, 协议: %s\n", ++count, data->ipv4, data->port, data->protocol);
+        //    }
+        //    /*匹配banner扫描*/
+        //}
         if (strncmp(data->line_data, "Banner", 6) == 0) {
             if (sscanf(data->line_data, "Banner %u %9s %15s %127s %5119[^\n]", &data->port, data->protocol, data->ipv4, data->service, data->banner) == 5) {
                 //printf("No.%lu 发现服务 - IP: %s, 端口: %d, 协议: %s, 服务: %s, Banner: %s\n", ++count, data->ipv4, data->port, data->protocol, data->service, data->banner);
-                if (!write_to_database(conn, manager)) return 0;
+                //printf("IP: %s\n", data->ipv4);
                 if (stop_signal) return 0;                        //收到停止信号，直接退出函数。（就目前为止，我认为 0 和 1 都可以）
-                if (!add_scan_result_to_cache(manager, data->ipv4, scanner_name, data->port, data->service, data->protocol, data->banner)) return 0;
+                
+                if (check_write(manager))
+                {
+                    if (!write_to_database(conn, manager)) return 0;
+                }
+                else
+                {
+                    if (!add_scan_result_to_cache(manager, data->ipv4, scanner_name, data->port, data->service, data->protocol, data->banner)) return 0;
+                }
             }
         }
 
     }
+    if (!write_to_database(conn, manager)) return 0;
     return 1;
 }
 
