@@ -4,7 +4,7 @@
 #include "uthash.h"
 #include "postgresql/libpq-fe.h"
 
-#define CACHE_SIZE 1000
+#define CACHE_SIZE 5000
 
 
 // 把 DbConnectInfo 移到这里
