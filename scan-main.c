@@ -277,11 +277,12 @@ int scan(PGconn* conn, ScanData* ScanData, CacheManager* manager, ScanConfig* sc
             exit(EXIT_FAILURE);
         }
         int req_count = 0;
+        const char* target_domain = "http://192.168.1.6:9999/scanner/target";
         while (!stop_signal)
         {
 
             /*稍后添加获取目标的代码*/
-            char* result = http_requests("http;//192.168.1.6/scanner/target");
+            char* result = http_requests(target_domain);
             if (!result)
             {
                 sleep(5);

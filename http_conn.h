@@ -1,4 +1,4 @@
 ﻿
 
 
-char* http_requests(char*);
+char* http_requests(const char*);
