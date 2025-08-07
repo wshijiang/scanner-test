@@ -8,6 +8,8 @@
 #include <string.h>
 #include <postgresql/libpq-fe.h>
 #include <signal.h>
+#include <errno.h>
+#include <spawn.h>
 
 #include "masscan_main.h"
 #include "db-postgresql.h"
@@ -47,35 +49,99 @@ int check_write(const CacheManager* manager)
     return 0;
 }
 
+///**
+//* 发送目标相关信息
+//*/
+//int send_target(int write_fd, const char* target)
+//{
+//    size_t len = strlen(target);
+//    //if (write(write_fd, &len, sizeof(size_t)) != sizeof(size_t)) return 0;
+//    if (write(write_fd, target, len) != (ssize_t)len) return 0;
+//    return 1;
+//    
+//}
+//
+///**
+//* 接收目标相关信息
+//*/
+//char* receive_target(int read_fd)
+//{
+//    //size_t len;
+//    //if (read(read_fd, &len, sizeof(size_t)) != sizeof(size_t)) return NULL;
+//
+//    char* receive_content = malloc(1000);
+//    if (read(read_fd, receive_content, len) == -1)
+//    {
+//        free(receive_content);
+//        return NULL;
+//    }
+//
+//    receive_content[999] = '\0';
+//    return receive_content;
+//}
+
 /**
-* 发送目标相关信息
-*/
-int send_target(int write_fd, const char* target)
-{
-    size_t len = strlen(target);
-    if (write(write_fd, &len, sizeof(size_t)) != sizeof(size_t)) return 0;
-    if (write(write_fd, target, len) != (ssize_t)len) return 0;
+ * 发送目标或控制信号（纯文本行协议）
+ */
+int send_target(int write_fd, const char* target) {
+    char buffer[256];
+    snprintf(buffer, sizeof(buffer), "%s\n", target);
+    size_t len = strlen(buffer);
+    if (write(write_fd, buffer, len) != (ssize_t)len) {
+        perror("Failed to send target");
+        return 0;
+    }
     return 1;
-    
 }
 
 /**
-* 接收目标相关信息
-*/
-char* receive_target(int read_fd)
-{
-    size_t len;
-    if (read(read_fd, &len, sizeof(size_t)) != sizeof(size_t)) return NULL;
+ * 接收目标或控制信号（纯文本行协议）
+ */
+char* receive_target(int read_fd) {
+    static char buffer[256];
+    static int buffer_pos = 0;
+    static int buffer_len = 0;
 
-    char* receive_content = malloc(len + 1);
-    if (read(read_fd, receive_content, len) != (ssize_t)len)
-    {
-        free(receive_content);
+    // 查找缓冲区中是否有完整的行
+    for (int i = buffer_pos; i < buffer_len; i++) {
+        if (buffer[i] == '\n') {
+            // 找到完整的行
+            int line_len = i - buffer_pos;
+            char* result = malloc(line_len + 1);
+            if (!result) return NULL;
+
+            memcpy(result, buffer + buffer_pos, line_len);
+            result[line_len] = '\0';
+
+            // 更新缓冲区位置
+            buffer_pos = i + 1;
+            if (buffer_pos >= buffer_len) {
+                buffer_pos = buffer_len = 0;
+            }
+
+            return result;
+        }
+    }
+
+    // 没有找到完整的行，需要读取更多数据
+    if (buffer_pos > 0) {
+        // 移动剩余数据到缓冲区开头
+        memmove(buffer, buffer + buffer_pos, buffer_len - buffer_pos);
+        buffer_len -= buffer_pos;
+        buffer_pos = 0;
+    }
+
+    // 读取更多数据
+    ssize_t bytes_read = read(read_fd, buffer + buffer_len, sizeof(buffer) - buffer_len - 1);
+    if (bytes_read <= 0) {
         return NULL;
     }
 
-    receive_content[len] = '\0';
-    return receive_content;
+    buffer_len += bytes_read;
+    buffer[buffer_len] = '\0';
+
+    // 递归调用查找行
+    return receive_target(read_fd);
 }
 
 /**
@@ -231,39 +297,124 @@ int scan(PGconn* conn, ScanData* ScanData, CacheManager* manager, ScanConfig* sc
         dup2(child_to_parent[1], STDOUT_FILENO);
         // 将标准错误输出也重定向到管道（捕获所有输出）
         dup2(child_to_parent[1], STDERR_FILENO);
+        close(child_to_parent[1]);
+        setbuf(stdout, NULL);
         
         while (!stop_signal)
         {
             char* target = receive_target(parent_to_child[0]);
-            if (!target) return 0;
+            if (!target)
+            {
+                fprintf(stderr, "Failed to receive target: %s\n", strerror(errno));
+                close(parent_to_child[0]);     //关闭读取端
+                printf("ERROR\n");
+                exit(1);
+            }
             if (!strcmp(target, "DONE"))   //子进程扫描结束和主进程发送完毕指令使用不同标识符以区分
             {
-                stop_signal = 1;
-                break;
-            }
-
-            if (execlp("./a", 
-                "a", 
-                "-p80,22,53,8000,7601", 
-                target, 
-                "--rate=10000", 
-                "--banner", 
-                "--source-ip", 
-                scan_config->banner_scan_ip, 
-                NULL) == -1
-                )
-            {
-                perror("执行错误");
                 free(target);
-                close(child_to_parent[1]);
-                return 0;
+                stop_signal = 1;
+                close(parent_to_child[0]);
+                printf("COMPLETE\n");         ///////////////////////////////////////////////////////////需要注意，这要更改标识符
+                exit(0);
             }
-            printf("COMPLETE\n");
+
+            pid_t child_pid;
+            posix_spawn_file_actions_t actions;
+            posix_spawnattr_t attr;
+            int status;
+
+
+            /*开始初始化posix_spawn*/
+            if (posix_spawn_file_actions_init(&actions))
+            {
+                printf(stderr, "ERROR\n");
+                free(target);
+                close(parent_to_child[0]);
+                exit(1);
+            }
+
+            if (posix_spawnattr_init(&attr))
+            {
+                //fprintf(stderr, "posix_spawnattr_init failed: %s\n", strerror(errno));
+                posix_spawn_file_actions_destroy(&actions);
+                printf("ERROR\n");
+                free(target);
+                close(parent_to_child[0]);
+                exit(1);
+            }
+            if (posix_spawnattr_setflags(&attr, 0) != 0) {
+                fprintf(stderr, "posix_spawnattr_setflags failed: %s\n", strerror(errno));
+                posix_spawn_file_actions_destroy(&actions);
+                posix_spawnattr_destroy(&attr);
+                if (printf("ERROR\n") < 0) fprintf(stderr, "printf failed: %s\n", strerror(errno));
+                free(target);
+                close(parent_to_child[0]);
+                exit(1);
+            }
+
+
+            if (posix_spawn_file_actions_adddup2(&actions, STDOUT_FILENO, STDOUT_FILENO) != 0 ||
+                posix_spawn_file_actions_adddup2(&actions, STDERR_FILENO, STDERR_FILENO) != 0) {
+                //fprintf(stderr, "posix_spawn_file_actions_adddup2 failed: %s\n", strerror(errno));
+                posix_spawn_file_actions_destroy(&actions);
+                posix_spawnattr_destroy(&attr);
+                printf("ERROR\n");
+                free(target);
+                close(parent_to_child[0]);
+                exit(1);
+            }
+
+            
+            char* scan_argv[] = {
+                "a",
+                "-p80,22,53,8000,7601",
+                target,
+                "--rate=10000",
+                "--banner",
+                "--source-ip",
+                (char*)scan_config->banner_scan_ip,
+                NULL
+            };
+
+            status = posix_spawnp(&child_pid, "./a", &actions, &attr, scan_argv, NULL);
+            if (status != 0) {
+                fprintf(stderr, "posix_spawnp failed: %s\n", strerror(status));
+                posix_spawn_file_actions_destroy(&actions);
+                posix_spawnattr_destroy(&attr);
+                printf("ERROR\n");
+                free(target);
+                close(parent_to_child[0]);
+                exit(1);
+            }
+
+            // 清理 posix_spawn 资源
+            posix_spawn_file_actions_destroy(&actions);
+            posix_spawnattr_destroy(&attr);
+
+            // 等待子子进程完成
+            if (waitpid(child_pid, &status, 0) == -1) {
+                //fprintf(stderr, "waitpid failed for grandchild: %s\n", strerror(errno));
+                printf("ERROR\n");
+                free(target);
+                close(parent_to_child[0]);
+                exit(1);
+            }
+
+            if (WIFEXITED(status)) {
+                //fprintf(stderr, "子子进程结束，状态码 %d\n", WEXITSTATUS(status));
+                printf("COMPLETE\n");
+            }
+            else {
+                //fprintf(stderr, "子子进程结束异常\n", target);
+                printf("ERROR\n");
+            }
+
             free(target);
+            
         }
-
-        close(child_to_parent[1]);
-
+        close(parent_to_child[0]);
+        exit(0);
 
     }
     else { // 父进程
@@ -280,14 +431,24 @@ int scan(PGconn* conn, ScanData* ScanData, CacheManager* manager, ScanConfig* sc
         const char* target_domain = "http://192.168.1.6:9999/scanner/target";
         while (!stop_signal)
         {
+            int status;
+            pid_t result = waitpid(pid, &status, WNOHANG);
+            if (result > 0) {
+                fprintf(stderr, "Child process exited with status %d\n", WEXITSTATUS(status));
+                break;
+            }
+            else if (result == -1) {
+                perror("waitpid failed");
+                break;
+            }
 
             /*稍后添加获取目标的代码*/
-            char* result = http_requests(target_domain);
-            if (!result)
+            char* http_result = http_requests(target_domain);
+            if (!http_result)
             {
                 sleep(5);
                 req_count++;
-                free(result);
+                //free(result);
                 if (req_count >= 5)
                 {
                     send_target(parent_to_child[1], "DONE");
@@ -295,28 +456,58 @@ int scan(PGconn* conn, ScanData* ScanData, CacheManager* manager, ScanConfig* sc
                 }
                 continue;
             }
-            cJSON* root = cJSON_Parse(result);
+            printf("获取目标成功\n");
+            cJSON* root = cJSON_Parse(http_result);
 
-            cJSON* ip = cJSON_GetObjectItemCaseSensitive(root, "ip");
-            if (cJSON_IsString(ip) && ip->valuestring != NULL)
-            {
-                send_target(parent_to_child[1], ip->valuestring);     //发送目标
+            if (!root) {
+                fprintf(stderr, "JSON parse failed\n");
+                free(http_result);
+                req_count++;
+                if (req_count >= 5) {
+                    send_target(parent_to_child[1], "DONE");
+                    break;
+                }
+                continue;
             }
 
-            
+            cJSON* ip = cJSON_GetObjectItemCaseSensitive(root, "ip");
+            if (cJSON_IsString(ip) && ip->valuestring != NULL) {
+                if (!send_target(parent_to_child[1], ip->valuestring)) {
+                    fprintf(stderr, "Failed to send target: %s\n", ip->valuestring);
+                    cJSON_Delete(root);
+                    free(http_result);
+                    break;
+                }
+            }
+            else {
+                fprintf(stderr, "Invalid IP in JSON\n");
+                req_count++;
+                if (req_count >= 5) {
+                    send_target(parent_to_child[1], "DONE");
+                    break;
+                }
+            }
+
+            cJSON_Delete(root);
+            free(http_result);
 
             if (!scan_output_format(conn, fp, ScanData, manager, scan_config, "masscan"))
             {
+                printf("scan_output_format 失败，退出\n");
                 clear_cache_data(manager);
                 fclose(fp);
+                close(parent_to_child[1]);
                 wait(NULL); // 等待子进程结束
                 return 0;
             }
-            free(result);
 
+        }
+        if (req_count < 5 && !stop_signal) {
+            send_target(parent_to_child[1], "DONE");
         }
         req_count = 0;
 
+        close(parent_to_child[1]);
         clear_cache_data(manager);
         // 清理
         fclose(fp);
@@ -353,10 +544,12 @@ int scan_output_format(PGconn* conn, FILE* fp, ScanData* data, CacheManager* man
         }
         else if (!strncmp(data->line_data, "COMPLETE", 8))
         {
+            printf("收到 COMPLETE\n");
             break;
         }
         else if (!strncmp(data->line_data, "ERROR", 5))
         {
+            printf("收到 ERROR\n");
             stop_signal = 1;
             break;
         }
