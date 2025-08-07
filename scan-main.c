@@ -264,108 +264,149 @@ int main(int argc, char* argv[]) {
     return 0;
 }
 
+
+
+// 新增函数：直接从文件描述符读取而不是FILE*
+int scan_output_format_fd(PGconn* conn, int fd, ScanData* data, CacheManager* manager, ScanConfig* scan_config, const char* scanner_name)
+{
+    char buffer[8192];
+    static char line_buffer[8192];
+    static int line_pos = 0;
+
+    ssize_t bytes_read = read(fd, buffer, sizeof(buffer) - 1);
+    if (bytes_read <= 0) {
+        return 1; // 没有数据可读，继续
+    }
+
+    buffer[bytes_read] = '\0';
+
+    // 处理接收到的数据，按行分割
+    for (int i = 0; i < bytes_read; i++) {
+        if (buffer[i] == '\n') {
+            line_buffer[line_pos] = '\0';
+
+            // 处理完整的一行
+            if (!strncmp(line_buffer, "Banner", 6)) {
+                unsigned int port;
+                char protocol[10], ipv4[16], service[128], banner[5120];
+                if (sscanf(line_buffer, "Banner %u %9s %15s %127s %5119[^\n]", &port, protocol, ipv4, service, banner) == 5) {
+                    if (stop_signal) return 0;
+
+                    if (check_write(manager)) {
+                        if (!write_to_database(conn, manager)) return 0;
+                    }
+                    else {
+                        if (!add_scan_result_to_cache(manager, ipv4, scanner_name, port, service, protocol, banner)) return 0;
+                    }
+                }
+            }
+            else if (!strncmp(line_buffer, "COMPLETE", 8)) {
+                printf("收到 COMPLETE\n");
+                if (!write_to_database(conn, manager)) return 0;
+                return 1;
+            }
+            else if (!strncmp(line_buffer, "ERROR", 5)) {
+                printf("收到 ERROR\n");
+                return 1;
+            }
+
+            line_pos = 0;
+        }
+        else {
+            if (line_pos < sizeof(line_buffer) - 1) {
+                line_buffer[line_pos++] = buffer[i];
+            }
+        }
+    }
+
+    return 1;
+}
+
 /*
 先创建一个子线程，然后在子线程中执行扫描
 */
 int scan(PGconn* conn, ScanData* ScanData, CacheManager* manager, ScanConfig* scan_config)
-{/// XXX:需要能够接受ipv6并处理
-    pid_t pid;              // 进程ID
+{
+    pid_t pid;
+    int parent_to_child[2];
+    int child_to_parent[2];
 
-    int parent_to_child[2];      //父进程写入操作，子进程读取
-    int child_to_parent[2];      //子进程写入操作，父进程读取
-
-    //开始创建管道
-    if (pipe(parent_to_child) == -1 || pipe(child_to_parent) == -1)
-    {
+    // 创建管道
+    if (pipe(parent_to_child) == -1 || pipe(child_to_parent) == -1) {
         perror("创建管道失败");
         return 0;
     }
 
-    // 创建子进程
     pid = fork();
     if (pid == -1) {
         perror("创建子进程失败");
-        //exit(EXIT_FAILURE);
         return 0;
     }
 
     if (pid == 0) { // 子进程
-        // 关闭管道读端
-        close(parent_to_child[1]); //关闭写入
-        close(child_to_parent[0]); //关闭读取
-        // 将标准输出重定向到管道写端
+        close(parent_to_child[1]);
+        close(child_to_parent[0]);
+
+        // 重定向标准输出和错误输出
         dup2(child_to_parent[1], STDOUT_FILENO);
-        // 将标准错误输出也重定向到管道（捕获所有输出）
         dup2(child_to_parent[1], STDERR_FILENO);
         close(child_to_parent[1]);
         setbuf(stdout, NULL);
-        
-        while (!stop_signal)
-        {
+
+        while (!stop_signal) {
             char* target = receive_target(parent_to_child[0]);
-            if (!target)
-            {
+            if (!target) {
                 fprintf(stderr, "Failed to receive target: %s\n", strerror(errno));
-                close(parent_to_child[0]);     //关闭读取端
-                printf("ERROR\n");
-                exit(1);
-            }
-            if (!strcmp(target, "DONE"))   //子进程扫描结束和主进程发送完毕指令使用不同标识符以区分
-            {
-                free(target);
-                stop_signal = 1;
-                close(parent_to_child[0]);
-                printf("COMPLETE\n");         ///////////////////////////////////////////////////////////需要注意，这要更改标识符
-                exit(0);
+                break;
             }
 
+            if (!strcmp(target, "DONE")) {
+                free(target);
+                printf("COMPLETE\n");
+                fflush(stdout);
+                break;  // 跳出循环但不退出进程
+            }
+
+            // 执行扫描
             pid_t child_pid;
             posix_spawn_file_actions_t actions;
             posix_spawnattr_t attr;
             int status;
 
-
-            /*开始初始化posix_spawn*/
-            if (posix_spawn_file_actions_init(&actions))
-            {
-                printf(stderr, "ERROR\n");
+            if (posix_spawn_file_actions_init(&actions) != 0) {
+                printf("ERROR\n");
+                fflush(stdout);
                 free(target);
-                close(parent_to_child[0]);
-                exit(1);
+                continue;
             }
 
-            if (posix_spawnattr_init(&attr))
-            {
-                //fprintf(stderr, "posix_spawnattr_init failed: %s\n", strerror(errno));
+            if (posix_spawnattr_init(&attr) != 0) {
                 posix_spawn_file_actions_destroy(&actions);
                 printf("ERROR\n");
+                fflush(stdout);
                 free(target);
-                close(parent_to_child[0]);
-                exit(1);
-            }
-            if (posix_spawnattr_setflags(&attr, 0) != 0) {
-                fprintf(stderr, "posix_spawnattr_setflags failed: %s\n", strerror(errno));
-                posix_spawn_file_actions_destroy(&actions);
-                posix_spawnattr_destroy(&attr);
-                if (printf("ERROR\n") < 0) fprintf(stderr, "printf failed: %s\n", strerror(errno));
-                free(target);
-                close(parent_to_child[0]);
-                exit(1);
+                continue;
             }
 
+            if (posix_spawnattr_setflags(&attr, 0) != 0) {
+                posix_spawn_file_actions_destroy(&actions);
+                posix_spawnattr_destroy(&attr);
+                printf("ERROR\n");
+                fflush(stdout);
+                free(target);
+                continue;
+            }
 
             if (posix_spawn_file_actions_adddup2(&actions, STDOUT_FILENO, STDOUT_FILENO) != 0 ||
                 posix_spawn_file_actions_adddup2(&actions, STDERR_FILENO, STDERR_FILENO) != 0) {
-                //fprintf(stderr, "posix_spawn_file_actions_adddup2 failed: %s\n", strerror(errno));
                 posix_spawn_file_actions_destroy(&actions);
                 posix_spawnattr_destroy(&attr);
                 printf("ERROR\n");
+                fflush(stdout);
                 free(target);
-                close(parent_to_child[0]);
-                exit(1);
+                continue;
             }
 
-            
             char* scan_argv[] = {
                 "a",
                 "-p80,22,53,8000,7601",
@@ -378,59 +419,52 @@ int scan(PGconn* conn, ScanData* ScanData, CacheManager* manager, ScanConfig* sc
             };
 
             status = posix_spawnp(&child_pid, "./a", &actions, &attr, scan_argv, NULL);
-            if (status != 0) {
-                fprintf(stderr, "posix_spawnp failed: %s\n", strerror(status));
-                posix_spawn_file_actions_destroy(&actions);
-                posix_spawnattr_destroy(&attr);
-                printf("ERROR\n");
-                free(target);
-                close(parent_to_child[0]);
-                exit(1);
-            }
 
-            // 清理 posix_spawn 资源
+            // 清理资源
             posix_spawn_file_actions_destroy(&actions);
             posix_spawnattr_destroy(&attr);
 
-            // 等待子子进程完成
-            if (waitpid(child_pid, &status, 0) == -1) {
-                //fprintf(stderr, "waitpid failed for grandchild: %s\n", strerror(errno));
+            if (status != 0) {
+                fprintf(stderr, "posix_spawnp failed: %s\n", strerror(status));
                 printf("ERROR\n");
+                fflush(stdout);
                 free(target);
-                close(parent_to_child[0]);
-                exit(1);
+                continue;
             }
 
-            if (WIFEXITED(status)) {
-                //fprintf(stderr, "子子进程结束，状态码 %d\n", WEXITSTATUS(status));
-                printf("COMPLETE\n");
+            // 等待子子进程完成
+            if (waitpid(child_pid, &status, 0) == -1) {
+                printf("ERROR\n");
+                fflush(stdout);
             }
             else {
-                //fprintf(stderr, "子子进程结束异常\n", target);
-                printf("ERROR\n");
+                if (WIFEXITED(status)) {
+                    printf("COMPLETE\n");
+                    fflush(stdout);
+                }
+                else {
+                    printf("ERROR\n");
+                    fflush(stdout);
+                }
             }
 
             free(target);
-            
         }
+
         close(parent_to_child[0]);
         exit(0);
 
     }
     else { // 父进程
-        // 关闭管道写端
-        close(parent_to_child[0]);         //关闭读取，用于向子进程发送目标
-        close(child_to_parent[1]);         //关闭写入，用于接收子进程发送到数据
-        // 将管道读端转换为 FILE* 流
-        FILE* fp = fdopen(child_to_parent[0], "r");
-        if (fp == NULL) {
-            perror("转换管道为流失败");
-            exit(EXIT_FAILURE);
-        }
+        close(parent_to_child[0]);
+        close(child_to_parent[1]);
+
+        // 不要对 child_to_parent[0] 使用 fdopen，直接读取
         int req_count = 0;
         const char* target_domain = "http://192.168.1.6:9999/scanner/target";
-        while (!stop_signal)
-        {
+
+        while (!stop_signal) {
+            // 检查子进程状态
             int status;
             pid_t result = waitpid(pid, &status, WNOHANG);
             if (result > 0) {
@@ -442,20 +476,18 @@ int scan(PGconn* conn, ScanData* ScanData, CacheManager* manager, ScanConfig* sc
                 break;
             }
 
-            /*稍后添加获取目标的代码*/
+            // 获取目标
             char* http_result = http_requests(target_domain);
-            if (!http_result)
-            {
+            if (!http_result) {
                 sleep(5);
                 req_count++;
-                //free(result);
-                if (req_count >= 5)
-                {
+                if (req_count >= 5) {
                     send_target(parent_to_child[1], "DONE");
                     break;
                 }
                 continue;
             }
+
             printf("获取目标成功\n");
             cJSON* root = cJSON_Parse(http_result);
 
@@ -491,32 +523,30 @@ int scan(PGconn* conn, ScanData* ScanData, CacheManager* manager, ScanConfig* sc
             cJSON_Delete(root);
             free(http_result);
 
-            if (!scan_output_format(conn, fp, ScanData, manager, scan_config, "masscan"))
-            {
+            // 处理扫描输出 - 修改为直接从文件描述符读取
+            if (!scan_output_format_fd(conn, child_to_parent[0], ScanData, manager, scan_config, "masscan")) {
                 printf("scan_output_format 失败，退出\n");
                 clear_cache_data(manager);
-                fclose(fp);
                 close(parent_to_child[1]);
-                wait(NULL); // 等待子进程结束
+                wait(NULL);
                 return 0;
             }
-
         }
+
         if (req_count < 5 && !stop_signal) {
             send_target(parent_to_child[1], "DONE");
         }
-        req_count = 0;
 
         close(parent_to_child[1]);
+        close(child_to_parent[0]);
         clear_cache_data(manager);
-        // 清理
-        fclose(fp);
-        // 等待子进程结束
         wait(NULL);
     }
 
     return 1;
 }
+
+
 
 int scan_output_format(PGconn* conn, FILE* fp, ScanData* data, CacheManager* manager, ScanConfig* scan_config, const char* scanner_name)
 //TODO:需要把数据统计出然后送入数据库，但目前仅用输出至json文件做测试
