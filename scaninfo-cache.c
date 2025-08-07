@@ -162,7 +162,7 @@ int write_to_database(const  PGconn* conn, const CacheManager* manager)
         //NOTE:下次添加文件写入方案
         return 0;
     }
-    clear_cache_data(manager);
+    //clear_cache_data(manager);
     
 
     return 1;

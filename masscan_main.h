@@ -2,11 +2,6 @@
 
 #include "scaninfo-cache.h"
 
-/*
-下为处理masscan输出的预设
-*/
-
-
 /*ipv4地址最大空间*/
 #define MAX_IPV4_SIZE 16
 /*协议最大空间*/
@@ -18,7 +13,7 @@
 /*masscan 输出一行的最大空间*/
 #define MAX_LINE_SIZE (MAX_IPV4_SIZE + MAX_PROTOCOL_SIZE + MAX_BANNER_SIZE)
 
-typedef struct Masscan_data
+typedef struct ScanData
 {
     char line_data[MAX_LINE_SIZE];
     char ipv4[MAX_IPV4_SIZE];
@@ -27,21 +22,21 @@ typedef struct Masscan_data
     char banner[MAX_BANNER_SIZE];
 
     unsigned port;
-} Masscan_data;
+} ScanData;
 
-typedef struct MasscanConfig
+typedef struct ScanConfig
 {
-    char* masscan_path; // masscan可执行文件路径
+    char* scanner_path; // masscan可执行文件路径
     char* banner_scan_ip;
 	char* target_ip; // 扫描目标IP
     char* target_port;
     char* rate;      // 扫描速率
-} MasscanConfig;;
+} ScanConfig;
 
 
 
-int masscan_scan(PGconn*, Masscan_data*, CacheManager*, MasscanConfig*);
-int masscan_output_format(PGconn*, FILE*, Masscan_data*, CacheManager*, MasscanConfig*, const char*);
-int check_masscan_config(MasscanConfig*);
-int free_masscan_config(MasscanConfig*);
+int scan(PGconn*, ScanData*, CacheManager*, ScanConfig*);
+int scan_output_format(PGconn*, FILE*, ScanData*, CacheManager*, ScanConfig*, const char*);
+int check_scan_config(ScanConfig*);
+int free_scan_config(ScanConfig*);
 //int check_write(const CacheManager*);
