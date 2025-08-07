@@ -170,7 +170,7 @@ int main(int argc, char* argv[]) {
     scan_config->banner_scan_ip = strdup(argv[4]);
     scan_config->rate = strdup(argv[3]);
 
-    if (!check_scan_config)
+    if (!check_scan_config(scan_config))
     {
         free_scan_config(scan_config);
         free(data);
@@ -245,7 +245,7 @@ int scan(PGconn* conn, ScanData* ScanData, CacheManager* manager, ScanConfig* sc
             if (execlp("./a", 
                 "a", 
                 "-p80,22,53,8000,7601", 
-                scan_config->target_ip, 
+                target, 
                 "--rate=10000", 
                 "--banner", 
                 "--source-ip", 
@@ -276,19 +276,33 @@ int scan(PGconn* conn, ScanData* ScanData, CacheManager* manager, ScanConfig* sc
             perror("转换管道为流失败");
             exit(EXIT_FAILURE);
         }
-
+        int req_count = 0;
         while (!stop_signal)
         {
 
             /*稍后添加获取目标的代码*/
-            char* result = http_requests("http;//127.0.0.1/scanner/target");
+            char* result = http_requests("http;//192.168.1.6/scanner/target");
             if (!result)
             {
                 sleep(5);
+                req_count++;
                 free(result);
+                if (req_count >= 5)
+                {
+                    send_target(parent_to_child[1], "DONE");
+                    break;
+                }
                 continue;
             }
             cJSON* root = cJSON_Parse(result);
+
+            cJSON* ip = cJSON_GetObjectItemCaseSensitive(root, "ip");
+            if (cJSON_IsString(ip) && ip->valuestring != NULL)
+            {
+                send_target(parent_to_child[1], ip->valuestring);     //发送目标
+            }
+
+            
 
             if (!scan_output_format(conn, fp, ScanData, manager, scan_config, "masscan"))
             {
@@ -300,6 +314,7 @@ int scan(PGconn* conn, ScanData* ScanData, CacheManager* manager, ScanConfig* sc
             free(result);
 
         }
+        req_count = 0;
 
         clear_cache_data(manager);
         // 清理
