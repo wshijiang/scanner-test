@@ -34,12 +34,11 @@ mem_cb(void* contents, size_t size, size_t nmemb, void* userp)
 /**
 * 调用者需要free
 */
-char* http_requests(char* url)
+char* http_requests(const char* url)
 {
 	CURL* curl;
 	CURLcode http_res;
-	struct curl_slist* headers = NULL;
-	headers = curl_slist_append(headers, "User-Agent: Scanner/1.0");
+	
 
 	MemoryStruct chunk;
 	chunk.memory = malloc(1);
@@ -52,7 +51,7 @@ char* http_requests(char* url)
 
 	if (!curl)
 	{
-		fprintf(stderr, "curl错误");
+		fprintf(stderr, "curl错误\n");
 		return NULL;
 	}
 	/**
@@ -61,12 +60,14 @@ char* http_requests(char* url)
 	curl_easy_setopt(curl, CURLOPT_URL, url);
 	curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, mem_cb);
 	curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void*)&chunk);
+	struct curl_slist* headers = NULL;
+	headers = curl_slist_append(headers, "User-Agent: Scanner/1.0");
 	if (headers) curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 
 	http_res = curl_easy_perform(curl);
 	if (http_res != CURLE_OK)
 	{
-		fprintf(stderr, "请求错误");
+		fprintf(stderr, "请求错误\n", curl_easy_strerror(http_res));
 		free(chunk.memory);
 		chunk.memory = NULL;
 	}
