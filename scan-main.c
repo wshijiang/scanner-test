@@ -281,7 +281,7 @@ int scan(PGconn* conn, ScanData* ScanData, CacheManager* manager, ScanConfig* sc
         {
 
             /*稍后添加获取目标的代码*/
-            char* result = http_requests("http;//127.0.0.1/scanner/target");
+            char* result = http_requests("http;//192.168.1.6/scanner/target");
             if (!result)
             {
                 sleep(5);
