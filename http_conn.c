@@ -1,5 +1,8 @@
 ﻿
 #include "http_conn.h"
+#include <curl/curl.h>
+#include <stdlib.h>
+#include <string.h>
 
 typedef struct MemoryStruct {
 	char* memory;
