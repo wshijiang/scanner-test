@@ -3,7 +3,8 @@
 
 scan-test.sln
 scan-test.vcxproj
-
+.vs/
+obj/
 # User-specific files
 *.rsuser
 *.suo
