@@ -208,8 +208,8 @@ int main(int argc, char* argv[]) {
 int scan_output_format_fd(PGconn* conn, int fd, ScanData* data, CacheManager* manager, ScanConfig* scan_config, const char* scanner_name)
 {
     char buffer[8192];
-    static char line_buffer[8192];
-    static int line_pos = 0;
+    char line_buffer[8192];
+    int line_pos = 0;
     sleep(1); //暂停2秒
     int count = 0;
 
@@ -386,7 +386,6 @@ int scan(PGconn* conn, ScanData* ScanData, CacheManager* manager, ScanConfig* sc
                 "--source-ip",
                 (char*)scan_config->banner_scan_ip,
                 "--seed", seed_str,
-                "--wait", "0",
                 NULL
             };
             // 在 posix_spawnp 前添加
@@ -545,48 +544,6 @@ int scan(PGconn* conn, ScanData* ScanData, CacheManager* manager, ScanConfig* sc
     return 1;
 }
 
-
-
-int scan_output_format(PGconn* conn, FILE* fp, ScanData* data, CacheManager* manager, ScanConfig* scan_config, const char* scanner_name)
-//TODO:需要把数据统计出然后送入数据库，但目前仅用输出至json文件做测试
-{
-    //unsigned long count = 0;
-    while (fgets(data->line_data, sizeof(data->line_data), fp) != NULL) {
-        // 去除行尾换行符
-        data->line_data[strcspn(data->line_data, "\n")] = 0;
-
-        if (!strncmp(data->line_data, "Banner", 6)) {
-            if (sscanf(data->line_data, "Banner %u %9s %15s %127s %5119[^\n]", &data->port, data->protocol, data->ip, data->service, data->banner) == 5) {
-                //printf("No.%lu 发现服务 - IP: %s, 端口: %d, 协议: %s, 服务: %s, Banner: %s\n", ++count, data->ipv4, data->port, data->protocol, data->service, data->banner);
-                //printf("IP: %s\n", data->ipv4);
-                if (stop_signal) return 0;                        //收到停止信号，直接退出函数。（就目前为止，我认为 0 和 1 都可以）
-                
-                if (check_write(manager))
-                {
-                    if (!write_to_database(conn, manager)) return 0;
-                }
-                else
-                {
-                    if (!add_scan_result_to_cache(manager, data->ip, scanner_name, data->port, data->service, data->protocol, data->banner)) return 0;
-                }
-            }
-        }
-        else if (!strncmp(data->line_data, "COMPLETE", 8))
-        {
-            printf("收到 COMPLETE\n");
-            break;
-        }
-        else if (!strncmp(data->line_data, "ERROR", 5))
-        {
-            printf("收到 ERROR\n");
-            stop_signal = 1;
-            break;
-        }
-
-    }
-    if (!write_to_database(conn, manager)) return 0;
-    return 1;
-}
 
 int check_scan_config(ScanConfig* scan_config)
 {
