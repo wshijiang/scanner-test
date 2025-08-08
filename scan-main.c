@@ -211,7 +211,6 @@ int scan_output_format_fd(PGconn* conn, int fd, ScanData* data, CacheManager* ma
     char line_buffer[8192];
     int line_pos = 0;
     sleep(1); //暂停2秒
-    int count = 0;
 
     while (!stop_signal)
     {
@@ -236,7 +235,6 @@ int scan_output_format_fd(PGconn* conn, int fd, ScanData* data, CacheManager* ma
                     //char protocol[10], ipv4[16], service[128], banner[5120];
                     if (sscanf(line_buffer, "Banner %u %9s %39s %127s %7167[^\n]", &data->port, data->protocol, data->ip, data->service, data->banner) == 5)
                     {
-                        printf("IP: %s , COUNT: %d\n", data->ip, ++count);
                         if (stop_signal) return 0;
 
                         if (check_write(manager)) {
@@ -247,13 +245,8 @@ int scan_output_format_fd(PGconn* conn, int fd, ScanData* data, CacheManager* ma
                         }
                     }
                 }
-                else if (!strncmp(line_buffer, "DEBUG", 5))
-                {
-                    printf("收到DEBUG\n");
-                }
                 else if (!strncmp(line_buffer, "COMPLETE", 8))
                 {
-                    printf("收到 COMPLETE\n");
                     if (!write_to_database(conn, manager)) return 0;
                     scan_done = 1;
                     return 1;
@@ -280,8 +273,6 @@ int scan_output_format_fd(PGconn* conn, int fd, ScanData* data, CacheManager* ma
             }
         } //for
     } //while
-
-
 
     return 1;
 }
@@ -388,14 +379,8 @@ int scan(PGconn* conn, ScanData* ScanData, CacheManager* manager, ScanConfig* sc
                 "--seed", seed_str,
                 NULL
             };
-            // 在 posix_spawnp 前添加
-            fprintf(stderr, "子进程执行扫描目标: %s\n", target);
-            fprintf(stderr, "执行命令: ./a %s\n", scan_argv[2]);  // scan_argv[2] 是 target
-            fprintf(stderr, "DEBUG1\n");
-            printf("DEBUG\n");
 
             status = posix_spawnp(&child_pid, "./a", &actions, &attr, scan_argv, NULL);
-            fprintf(stderr, "DEBUG2\n");
             // 清理资源
             posix_spawn_file_actions_destroy(&actions);
             posix_spawnattr_destroy(&attr);
@@ -424,7 +409,6 @@ int scan(PGconn* conn, ScanData* ScanData, CacheManager* manager, ScanConfig* sc
                     fflush(stdout);
                 }
             }
-            fprintf(stderr, "DEBUG3\n");
             free(target);
         }
 
@@ -477,7 +461,6 @@ int scan(PGconn* conn, ScanData* ScanData, CacheManager* manager, ScanConfig* sc
                 continue;
             }
 
-            printf("获取目标成功\n");
             cJSON* root = cJSON_Parse(http_result);
 
             if (!root) {
