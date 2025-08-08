@@ -325,7 +325,9 @@ int scan(PGconn* conn, ScanData* ScanData, CacheManager* manager, ScanConfig* sc
                 continue;
             }
 
+
             if (!strcmp(target, "DONE")) {
+
                 free(target);
                 printf("DONE_OK\n");
                 fflush(stdout);
@@ -458,6 +460,7 @@ int scan(PGconn* conn, ScanData* ScanData, CacheManager* manager, ScanConfig* sc
             // 获取目标
 
             if (!scan_done)
+
             {
                 sleep(1);
                 continue;
@@ -531,6 +534,7 @@ int scan(PGconn* conn, ScanData* ScanData, CacheManager* manager, ScanConfig* sc
             printf("主循环结束，发送DONE信号给子进程\n");
             send_target(parent_to_child[1], "DONE");
         }
+        req_count = 0;
 
         close(parent_to_child[1]);
         close(child_to_parent[0]);
